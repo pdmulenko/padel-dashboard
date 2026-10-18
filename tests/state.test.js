@@ -19,6 +19,7 @@ import {
     targetRounds,
     roundsForCircles,
     restartSameRoster,
+    defaultEndRounds,
 } from '../state.js';
 
 function memoryStorage() {
@@ -141,9 +142,13 @@ test('турнир по числу туров завершается сам; «�
     assert.ok(s.current);
 });
 
-test('по умолчанию туров столько же, сколько игроков', () => {
-    const s = createSession({ mode: 'americano', endMode: 'rounds' }, names(7), [], 1);
-    assert.equal(targetRounds(s), 7);
+test('туров по умолчанию: n − 1, если никто не отдыхает, иначе n', () => {
+    assert.equal(targetRounds(createSession({ mode: 'americano', endMode: 'rounds' }, names(7), [], 1)), 7);
+    assert.equal(targetRounds(createSession({ mode: 'americano', endMode: 'rounds', courts: 2 }, names(8), [], 1)), 7);
+    assert.equal(targetRounds(createSession({ mode: 'americano', endMode: 'rounds', courts: 1 }, names(4), [], 1)), 3);
+    assert.equal(targetRounds(createSession({ mode: 'americano', endMode: 'rounds', courts: 1 }, names(8), [], 1)), 8);
+    assert.equal(defaultEndRounds(12, 3), 11);
+    assert.equal(defaultEndRounds(12, 2), 12);
 });
 
 test('круги «каждый с каждым в паре» пересчитываются в туры', () => {

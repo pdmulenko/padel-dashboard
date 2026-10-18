@@ -118,7 +118,7 @@ export function createSession(settings, names, pairNames = [], seed = Math.floor
     }
     if (s.settings.mode === 'americano') {
         for (const name of shuffle(names, rng)) s.players.push(newPlayer(s, name, 0));
-        if (s.settings.endRounds == null) s.settings.endRounds = names.length;
+        if (s.settings.endRounds == null) s.settings.endRounds = defaultEndRounds(names.length, s.settings.courts);
     } else {
         for (const [a, b] of shuffle(pairNames, rng)) {
             const pa = newPlayer(s, a, 0);
@@ -198,6 +198,13 @@ export function roundsToEqualHint(s) {
 // ---------- окончание турнира ----------
 
 const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
+
+// Туров по умолчанию: n − 1, если никто не отдыхает (игроков ровно на все корты) —
+// тогда каждый побывает в паре с каждым; иначе по числу игроков
+export function defaultEndRounds(players, courts) {
+    if (players >= 4 && players % 4 === 0 && courts >= players / 4) return players - 1;
+    return players;
+}
 
 // Туров на заданное число кругов «каждый с каждым в паре»: каждый тур даёт 2 пары напарников на корт;
 // результат округляется вверх до момента, когда у всех поровну матчей

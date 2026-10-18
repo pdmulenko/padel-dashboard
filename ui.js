@@ -136,7 +136,7 @@ function renderSetup() {
     const ws = isPairs && st.rotation === 'winnerstays';
     const paired = new Set(su.pairs.flat());
     const unpaired = su.names.filter((n) => !paired.has(n));
-    const endRounds = st.endRounds ?? Math.max(su.names.length, 1);
+    const endRounds = st.endRounds ?? Math.max(S.defaultEndRounds(su.names.length, st.courts), 1);
     const circlesRounds = S.roundsForCircles(su.names.length, st.courts, st.endCircles);
 
     return `
@@ -681,7 +681,7 @@ const actions = {
     },
     'step-end-rounds'(el) {
         const st = view.setup.settings;
-        const cur = st.endRounds ?? Math.max(view.setup.names.length, 1);
+        const cur = st.endRounds ?? Math.max(S.defaultEndRounds(view.setup.names.length, st.courts), 1);
         st.endRounds = Math.min(99, Math.max(1, cur + Number(el.dataset.delta)));
     },
     'step-end-circles'(el) {
