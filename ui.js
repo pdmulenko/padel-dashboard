@@ -904,6 +904,18 @@ document.addEventListener('input', (e) => {
     }
 });
 
+// системная тема могла смениться (например, авто-тёмная на закате): сверить переключатель и цвет строки состояния
+function syncSystemTheme() {
+    const toggle = document.querySelector('[data-toggle="theme"]');
+    if (toggle && toggle.checked === isDark()) return;
+    applyTheme(document.documentElement.dataset.theme ?? null);
+    render();
+}
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncSystemTheme);
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') syncSystemTheme();
+});
+
 document.addEventListener('change', (e) => {
     const kind = e.target.dataset.toggle;
     if (kind === 'theme') {
