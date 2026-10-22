@@ -1,19 +1,22 @@
 /* Только относительные единицы: rem, em, %, vw/vh/dvh. Никаких px. */
 
 :root {
-    --bg: #f4f6fa;
+    /* палитра из иконки: тёмно-зелёный #1f6f4a, салатовый #d8ed3a, белый */
+    --bg: #f2f6f3;
     --card: #ffffff;
-    --text: #141a24;
-    --muted: #5d6778;
-    --line: #d9dee8;
-    --accent: #1f4e9c;
+    --text: #13211a;
+    --muted: #5a6b61;
+    --line: #d5e1d9;
+    --accent: #1f6f4a;
     --accent-text: #ffffff;
-    --accent-soft: #e3ebf8;
-    --team-bg: #eef1f6;
+    --accent-soft: #e1efe7;
+    --team-bg: #ecf3ee;
+    --lime: #d8ed3a;
+    --brand: #1f6f4a;
     --win: #1a7f37;
     --loss: #c62828;
     --danger: #c62828;
-    --shadow: 0 0.0625rem 0.25rem rgba(20, 26, 36, 0.08);
+    --shadow: 0 0.0625rem 0.25rem rgba(19, 33, 26, 0.08);
     --radius: 0.875rem;
     --tap: 2.75rem;
     color-scheme: light;
@@ -22,16 +25,16 @@
 /* тёмная тема: по системе, если не выбрана вручную, или явно через data-theme */
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme='light']) {
-        --bg: #0f141c;
-        --card: #1a212d;
-        --text: #f2f5fa;
-        --muted: #9aa5b8;
-        --line: #2d3747;
-        --accent: #5b8ee6;
-        --accent-text: #0b1220;
-        --accent-soft: #22324d;
-        --team-bg: #252e3d;
-        --win: #4ccb6e;
+        --bg: #0c1511;
+        --card: #15211b;
+        --text: #eef5f0;
+        --muted: #93a89b;
+        --line: #283a30;
+        --accent: #4cbf86;
+        --accent-text: #07130d;
+        --accent-soft: #1b3a2a;
+        --team-bg: #1e2f26;
+        --win: #d8ed3a;
         --loss: #ff6b6b;
         --danger: #ff6b6b;
         --shadow: none;
@@ -40,16 +43,16 @@
 }
 
 :root[data-theme='dark'] {
-    --bg: #0f141c;
-    --card: #1a212d;
-    --text: #f2f5fa;
-    --muted: #9aa5b8;
-    --line: #2d3747;
-    --accent: #5b8ee6;
-    --accent-text: #0b1220;
-    --accent-soft: #22324d;
-    --team-bg: #252e3d;
-    --win: #4ccb6e;
+    --bg: #0c1511;
+    --card: #15211b;
+    --text: #eef5f0;
+    --muted: #93a89b;
+    --line: #283a30;
+    --accent: #4cbf86;
+    --accent-text: #07130d;
+    --accent-soft: #1b3a2a;
+    --team-bg: #1e2f26;
+    --win: #d8ed3a;
     --loss: #ff6b6b;
     --danger: #ff6b6b;
     --shadow: none;
@@ -595,7 +598,7 @@ ol.plain li {
     gap: 0.75rem;
     padding: 1rem;
     border-radius: var(--radius);
-    background: #1c4689;
+    background: var(--brand);
     color: #ffffff;
     font-weight: 500;
 }
@@ -642,7 +645,11 @@ ol.plain li {
 }
 
 .switch input:checked + .slider {
-    background-color: #2196f3;
+    background-color: var(--lime);
+}
+
+.switch input:checked + .slider::before {
+    background-color: var(--brand);
 }
 
 .switch input:checked + .slider::before {
@@ -682,7 +689,7 @@ ol.plain li {
 .banner-icon .icon {
     width: 2.5rem;
     height: 2.5rem;
-    color: #e0a800;
+    color: var(--trophy, #c9a400);
 }
 
 /* ---------- таблица ---------- */

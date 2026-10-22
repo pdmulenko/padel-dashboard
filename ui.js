@@ -95,7 +95,7 @@ function isDark() {
 function applyTheme(theme) {
     if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
     else delete document.documentElement.dataset.theme;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isDark() ? '#0f141c' : '#1f4e9c');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isDark() ? '#0c1511' : '#1f6f4a');
 }
 
 function switches() {
