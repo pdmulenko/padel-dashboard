@@ -112,43 +112,73 @@ function matchPenalty(sides, hist) {
     return p;
 }
 
-// Все разбиения списка (длина кратна 4) на матчи 2×2
-function allPartitions(ids) {
-    if (ids.length === 0) return [[]];
-    const [x, ...rest] = ids;
-    const out = [];
-    for (let i = 0; i < rest.length; i++) {
-        const y = rest[i];
-        const others = rest.filter((_, k) => k !== i);
-        for (let j = 0; j < others.length; j++) {
-            for (let k = j + 1; k < others.length; k++) {
-                const z = others[j];
-                const w = others[k];
-                const remain = others.filter((_, q) => q !== j && q !== k);
-                for (const tail of allPartitions(remain)) out.push([[[x, y], [z, w]], ...tail]);
-            }
-        }
-    }
-    return out;
-}
-
 function partitionPenalty(partition, hist) {
     return partition.reduce((s, m) => s + matchPenalty(m, hist), 0);
 }
 
 // Лучшее разбиение выбранных игроков на матчи: полный перебор до 2 кортов, иначе случайный поиск
+// Все разбиения списка (чётной длины) на пары напарников
+function allPairings(ids) {
+    if (ids.length === 0) return [[]];
+    const [x, ...rest] = ids;
+    const out = [];
+    for (let i = 0; i < rest.length; i++) {
+        const others = rest.filter((_, k) => k !== i);
+        for (const tail of allPairings(others)) out.push([[x, rest[i]], ...tail]);
+    }
+    return out;
+}
+
+// Лучшая расстановка пар напарников по матчам (по штрафу за повторы соперников)
+function bestGrouping(pairs, hist) {
+    if (pairs.length === 0) return { penalty: 0, matches: [] };
+    const [a, ...rest] = pairs;
+    let best = { penalty: Infinity, matches: [] };
+    for (let i = 0; i < rest.length; i++) {
+        const match = [a, rest[i]];
+        const tail = bestGrouping(
+            rest.filter((_, k) => k !== i),
+            hist,
+        );
+        const penalty = matchPenalty(match, hist) + tail.penalty;
+        if (penalty < best.penalty) best = { penalty, matches: [match, ...tail.matches] };
+    }
+    return best;
+}
+
+// Лучшее разбиение выбранных игроков на матчи. До 12 игроков (3 корта) — точно:
+// сначала пары напарников с наименьшим числом повторов, затем их расстановка по матчам;
+// больше — случайный поиск
 function bestPartition(ids, hist, rng) {
-    let candidates;
-    if (ids.length <= 8) {
-        candidates = allPartitions(ids);
-    } else {
-        candidates = [];
-        for (let s = 0; s < 400; s++) {
-            const sh = shuffle(ids, rng);
-            const part = [];
-            for (let i = 0; i < sh.length; i += 4) part.push([[sh[i], sh[i + 1]], [sh[i + 2], sh[i + 3]]]);
-            candidates.push(part);
+    if (ids.length <= 12) {
+        const partnerCost = (pairing) =>
+            pairing.reduce((sum, [x, y]) => sum + (hist.partner.get(pairKey(x, y)) ?? 0), 0);
+        let minCost = Infinity;
+        let pool = [];
+        for (const pairing of allPairings(ids)) {
+            const c = partnerCost(pairing);
+            if (c < minCost) {
+                minCost = c;
+                pool = [pairing];
+            } else if (c === minCost && pool.length < 300) pool.push(pairing);
         }
+        let best = Infinity;
+        let bestList = [];
+        for (const pairing of shuffle(pool, rng)) {
+            const g = bestGrouping(pairing, hist);
+            if (g.penalty < best) {
+                best = g.penalty;
+                bestList = [g.matches];
+            } else if (g.penalty === best) bestList.push(g.matches);
+        }
+        return { penalty: 10 * minCost + best, partition: pick(bestList, rng) };
+    }
+    const candidates = [];
+    for (let s = 0; s < 400; s++) {
+        const sh = shuffle(ids, rng);
+        const part = [];
+        for (let i = 0; i < sh.length; i += 4) part.push([[sh[i], sh[i + 1]], [sh[i + 2], sh[i + 3]]]);
+        candidates.push(part);
     }
     let best = Infinity;
     let bestList = [];

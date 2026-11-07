@@ -1,7 +1,7 @@
 // Рендер и события. Весь экран перерисовывается из состояния; события — через data-action.
 
 import { t, getLang, setLang } from './i18n.js';
-import { scoreFromTarget, isValidScore } from './scoring.js';
+import { scoreFromTarget, isValidScore, podium, podiumTiebreaks } from './scoring.js';
 import * as S from './state.js';
 
 const app = document.getElementById('app');
@@ -18,7 +18,9 @@ const THEME_KEY = 'pd-theme';
 
 let session = null;
 const view = {
-    screen: 'setup', // 'setup' | 'game' | 'results' | 'settings'
+    screen: 'setup', // 'setup' | 'game' | 'results' | 'settings' | 'matches' (история после завершения)
+    setupTab: 'params', // 'params' | 'players' | 'history'
+    archiveId: null, // открытая запись архива
     drafts: {}, // черновики счёта: ключ -> [x, y]
     setup: null,
     dialog: null, // { type, ... }
@@ -62,7 +64,9 @@ function stepper(action, value, label = value) {
 }
 
 function persist() {
-    if (session) S.saveSession(storage, session);
+    if (!session) return;
+    S.saveSession(storage, session);
+    S.syncArchive(storage, session);
 }
 
 function showToast(text) {
@@ -118,30 +122,51 @@ function switches() {
 function defaultSetup() {
     const last = S.loadLast(storage);
     return {
-        settings: { ...S.DEFAULT_SETTINGS, ...(last?.settings ?? {}), endRounds: null },
+        settings: { ...S.DEFAULT_SETTINGS, ...(last?.settings ?? {}), endRounds: null, circleRounds: null },
         names: [],
         pairs: [],
         pickFirst: null,
         nameInput: '',
+        nameError: '',
         targetValue: last?.settings?.targetSum ?? 25,
         error: '',
         last,
     };
 }
 
-function renderSetup() {
-    const su = view.setup;
-    const st = su.settings;
+// Комментарий к числу туров: поровну ли игр, каждый ли с каждым, и сколько нужно для полной игры
+function roundsComment(players, courts, rounds) {
+    if (players < 4) return `<p class="note">${t('endNeedPlayers')}</p>`;
+    const sm = S.roundsSummary(players, courts, rounds);
+    if (!sm) return '';
+    const lines = [];
+    const r = t('nRounds', { n: rounds });
+    if (sm.pairTimes != null) {
+        lines.push(t('sumFull', { rounds: r, games: t('nGames', { n: sm.perPlayer }), times: t('nTimes', { n: sm.pairTimes }) }));
+    } else {
+        lines.push(
+            sm.equal
+                ? t('sumEqual', { rounds: r, games: t('nGames', { n: sm.perPlayer }) })
+                : t('sumUnequal', { rounds: r, a: sm.perPlayer, b: sm.perPlayer + 1 }),
+        );
+        lines.push(
+            t('sumNeedFull', {
+                rounds: t('nRounds', { n: sm.full.rounds }),
+                games: t('nGames', { n: sm.full.matches }),
+                times: t('nTimes', { n: sm.full.times }),
+            }),
+        );
+    }
+    return lines.map((l) => `<p class="note">${l}</p>`).join('');
+}
+
+function setupParams() {
+    const st = view.setup.settings;
     const isPairs = st.mode === 'pairs';
     const ws = isPairs && st.rotation === 'winnerstays';
-    const paired = new Set(su.pairs.flat());
-    const unpaired = su.names.filter((n) => !paired.has(n));
-    const endRounds = st.endRounds ?? Math.max(S.defaultEndRounds(su.names.length, st.courts), 1);
-    const circlesRounds = S.roundsForCircles(su.names.length, st.courts, st.endCircles);
-
     return `
     ${switches()}
-    <section class="card">
+    <section class="card stack">
         <h2>${t('mode')}</h2>
         ${segmented('set-mode', [['americano', t('americano')], ['pairs', t('fixedPairs')]], st.mode)}
         ${
@@ -156,10 +181,7 @@ function renderSetup() {
                    ${st.courts > 1 ? `<p class="note">${t('winnerStaysOneCourt')}</p>` : ''}`
                 : ''
         }
-        <div class="row-between">
-            <h3>${t('courts')}</h3>
-            ${stepper('set-courts', st.courts)}
-        </div>
+        <div class="row-between"><h3>${t('courts')}</h3>${stepper('set-courts', st.courts)}</div>
         ${
             ws
                 ? `<div class="row-between">
@@ -172,81 +194,171 @@ function renderSetup() {
         ${segmented('set-scoring', [['free', t('freeScore')], ['target', t('targetScore')]], st.targetSum ? 'target' : 'free')}
         ${
             st.targetSum
-                ? `<div class="row-between">
-                       <div class="chips">${[19, 25, 31, 32]
-                           .map((v) => `<button type="button" class="chip ${v === st.targetSum ? 'on' : ''}" data-action="set-target" data-value="${v}">${v}</button>`)
-                           .join('')}</div>
-                       ${stepper('step-target', st.targetSum)}
-                   </div>`
+                ? `<div class="row-between"><h3>${t('targetSumLabel')}</h3>${stepper('step-target', st.targetSum)}</div>
+                   <div class="chips">${[11, 19, 25, 31]
+                       .map((v) => `<button type="button" class="chip ${v === st.targetSum ? 'on' : ''}" data-action="set-target" data-value="${v}">${v}</button>`)
+                       .join('')}</div>`
                 : ''
         }
-        ${
-            isPairs
-                ? ''
-                : `<h3>${t('endOfGame')}</h3>
-                   ${segmented('set-end', [['free', t('endFree')], ['rounds', t('endRounds')], ['circles', t('endCircles')]], st.endMode)}
-                   ${
-                       st.endMode === 'rounds'
-                           ? `<div class="row-between"><h3>${t('roundsCount')}</h3>${stepper('step-end-rounds', endRounds)}</div>`
-                           : ''
-                   }
-                   ${
-                       st.endMode === 'circles'
-                           ? `<div class="row-between"><h3>${t('circlesCount')}</h3>${stepper('step-end-circles', st.endCircles)}</div>
-                              <p class="note">${t('circlesNote')}${circlesRounds ? ` ${t('circlesRounds', { n: circlesRounds })}` : ''}</p>`
-                           : ''
-                   }`
-        }
     </section>
+    ${btn('setup-tab', t('nextPlayers'), { iconName: 'users', cls: 'primary wide big', attrs: 'data-tab="players"' })}`;
+}
 
-    <section class="card">
-        <h2>${t('players')} <span class="muted">${su.names.length}</span></h2>
+function setupPlayers() {
+    const su = view.setup;
+    const st = su.settings;
+    const isPairs = st.mode === 'pairs';
+    const paired = new Set(su.pairs.flat());
+    const unpaired = su.names.filter((n) => !paired.has(n));
+    const n = su.names.length;
+    const endRounds = st.endRounds ?? Math.max(S.defaultEndRounds(n, st.courts), 1);
+    const circleRounds = st.circleRounds ?? S.fullPlay(n, st.courts)?.rounds ?? 1;
+
+    const endCard = isPairs
+        ? ''
+        : `<section class="card stack">
+               <h2>${t('endOfGame')}</h2>
+               ${segmented('set-end', [['free', t('endFree')], ['rounds', t('endRounds')], ['circles', t('endCircles')]], st.endMode)}
+               ${
+                   st.endMode === 'rounds'
+                       ? `<div class="row-between"><h3>${t('roundsCount')}</h3>${stepper('step-end-rounds', endRounds)}</div>
+                          ${roundsComment(n, st.courts, endRounds)}`
+                       : ''
+               }
+               ${
+                   st.endMode === 'circles'
+                       ? `<div class="row-between"><h3>${t('circlesCount')}</h3>${stepper('step-end-circles', st.endCircles)}</div>
+                          <div class="row-between"><h3>${t('circleRoundsLabel')}</h3>${stepper('step-circle-rounds', circleRounds)}</div>
+                          ${roundsComment(n, st.courts, st.endCircles * circleRounds)}`
+                       : ''
+               }
+           </section>`;
+
+    return `
+    <section class="card stack">
+        <h2>${t('players')} <span class="muted">${n}</span></h2>
         <form class="add-row" data-form="add-name">
             <input type="text" id="name-input" data-input="name" value="${esc(su.nameInput)}" placeholder="${t('nickname')}" autocomplete="off" enterkeyhint="done" maxlength="24" />
             <button type="submit" class="btn round primary" aria-label="${t('add')}">${icon('plus')}</button>
         </form>
+        ${su.nameError ? `<p class="error" id="name-error">${icon('circle-exclamation')} ${su.nameError}</p>` : ''}
+        ${n === 0 && su.last?.names?.length ? btn('use-last', t('sameAsLast'), { iconName: 'clock-rotate-left', cls: 'wide ghost' }) : ''}
         ${
-            su.names.length === 0 && su.last?.names?.length
-                ? btn('use-last', t('sameAsLast'), { iconName: 'clock-rotate-left', cls: 'wide ghost' })
+            n
+                ? `<ul class="name-list">${su.names
+                      .map(
+                          (name) =>
+                              `<li><span>${esc(name)}</span><button type="button" class="btn round ghost" data-action="remove-name" data-name="${esc(name)}" aria-label="${t('remove')}">${icon('xmark')}</button></li>`,
+                      )
+                      .join('')}</ul>`
                 : ''
         }
-        <ul class="name-list">${su.names
-            .map(
-                (n) =>
-                    `<li><span>${esc(n)}</span><button type="button" class="btn round ghost" data-action="remove-name" data-name="${esc(n)}" aria-label="${t('remove')}">${icon('xmark')}</button></li>`,
-            )
-            .join('')}</ul>
     </section>
 
     ${
         isPairs
-            ? `<section class="card">
+            ? `<section class="card stack">
                 <h2>${t('pairs')} <span class="muted">${su.pairs.length}</span></h2>
                 ${
                     unpaired.length
                         ? `<p class="note">${t('pickPartner')}</p>
                            <div class="chips">${unpaired
                                .map(
-                                   (n) =>
-                                       `<button type="button" class="chip ${su.pickFirst === n ? 'on' : ''}" data-action="pick-partner" data-name="${esc(n)}">${esc(n)}</button>`,
+                                   (name) =>
+                                       `<button type="button" class="chip ${su.pickFirst === name ? 'on' : ''}" data-action="pick-partner" data-name="${esc(name)}">${esc(name)}</button>`,
                                )
                                .join('')}</div>
                            ${btn('random-pairs', t('randomPairs'), { iconName: 'shuffle', cls: 'wide ghost' })}`
                         : ''
                 }
-                <ul class="name-list">${su.pairs
-                    .map(
-                        ([a, b], i) =>
-                            `<li><span>${esc(a)} + ${esc(b)}</span><button type="button" class="btn round ghost" data-action="unpair" data-index="${i}" aria-label="${t('remove')}">${icon('xmark')}</button></li>`,
-                    )
-                    .join('')}</ul>
+                ${
+                    su.pairs.length
+                        ? `<ul class="name-list">${su.pairs
+                              .map(
+                                  ([a, b], i) =>
+                                      `<li><span>${esc(a)} + ${esc(b)}</span><button type="button" class="btn round ghost" data-action="unpair" data-index="${i}" aria-label="${t('remove')}">${icon('xmark')}</button></li>`,
+                              )
+                              .join('')}</ul>`
+                        : ''
+                }
             </section>`
             : ''
     }
-
+    ${endCard}
     ${su.error ? `<p class="error">${icon('circle-exclamation')} ${su.error}</p>` : ''}
-    ${btn('start', t('start'), { iconName: 'play', cls: 'primary wide big' })}
-    `;
+    ${btn('start', t('start'), { iconName: 'play', cls: 'primary wide big' })}`;
+}
+
+function formatDate(iso) {
+    try {
+        return new Date(iso).toLocaleDateString(getLang() === 'en' ? 'en-GB' : 'ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch {
+        return iso.slice(0, 10);
+    }
+}
+
+function modeLabel(st) {
+    if (st.mode === 'americano') return t('americano');
+    return `${t('fixedPairs')} · ${st.rotation === 'winnerstays' ? t('winnerStays') : t('roundRobin')}`;
+}
+
+function setupHistory() {
+    const list = S.loadArchive(storage);
+    const open = view.archiveId && list.find((e) => e.id === view.archiveId);
+    if (open) {
+        const history = open.rounds
+            .map((r, i) => ({ r, i }))
+            .reverse()
+            .map(
+                ({ r, i }) => `<li class="${r.length === 1 ? 'single' : ''}">
+                    <div class="history-round">${t('round', { n: i + 1 })}</div>
+                    ${r
+                        .map(
+                            (m) => `<div class="history-match">
+                                <div>${r.length > 1 ? `<span class="muted">${t('court', { n: m.court })}:</span> ` : ''}${esc(m.a)} <span class="vs">vs</span> ${esc(m.b)}</div>
+                                <div class="history-score">${m.score[0]} : ${m.score[1]}</div>
+                            </div>`,
+                        )
+                        .join('')}
+                </li>`,
+            )
+            .join('');
+        return `
+        ${btn('archive-back', t('archiveBack'), { iconName: 'arrow-left', cls: 'ghost' })}
+        <section class="card banner">
+            <h2>${icon('trophy')} ${formatDate(open.finishedAt)}</h2>
+            <p class="muted">${modeLabel(open.settings)}</p>
+            ${podiumHtml(podium(open.rows))}
+            ${tiebreakNote(open.rows)}
+        </section>
+        <section class="card">
+            <h2>${icon('ranking-star')} ${t('standings')}</h2>
+            ${renderRows(open.rows, false, open.settings.mode === 'americano' ? t('player') : t('pair'))}
+        </section>
+        <section class="card">
+            <h2>${icon('clock-rotate-left')} ${t('history')}</h2>
+            <ul class="history">${history}</ul>
+        </section>
+        ${btn('ask-delete-archive', t('deleteFromArchive'), { iconName: 'trash-can', cls: 'danger wide' })}`;
+    }
+    if (!list.length) return `<section class="card"><p class="muted">${t('archiveEmpty')}</p></section>`;
+    return `<ul class="archive-list">${list
+        .map((e) => {
+            const champs = podium(e.rows)[0] ?? [];
+            const who = e.settings.mode === 'americano' ? t('nPlayers', { n: e.participants }) : t('nPairs', { n: e.participants });
+            return `<li><button type="button" class="card archive-item" data-action="open-archive" data-id="${esc(e.id)}">
+                <span class="archive-date">${formatDate(e.finishedAt)}</span>
+                <span class="muted">${modeLabel(e.settings)} · ${who}</span>
+                <span class="archive-winner">${icon('trophy')} ${champs.map((r) => esc(r.name)).join(', ')}</span>
+            </button></li>`;
+        })
+        .join('')}</ul>`;
+}
+
+function renderSetup() {
+    if (view.setupTab === 'players') return setupPlayers();
+    if (view.setupTab === 'history') return setupHistory();
+    return setupParams();
 }
 
 function addName() {
@@ -254,11 +366,12 @@ function addName() {
     const name = su.nameInput.trim();
     if (!name) return;
     if (su.names.some((n) => n.toLowerCase() === name.toLowerCase())) {
-        su.error = t('nameTaken', { name });
+        su.nameError = t('nameTaken', { name });
         return;
     }
     su.names.push(name);
     su.nameInput = '';
+    su.nameError = '';
     su.error = '';
 }
 
@@ -294,7 +407,7 @@ function scoreInput(key, target, match) {
             .join('');
         const cols = Math.ceil(Math.sqrt(target + 1));
         return `<div class="score-display">${x === null ? '– : –' : `${x} : ${target - x}`}</div>
-                <p class="note center">${t('pointsOf', { name: esc(sideNames(match, 0)) })}</p>
+                <p class="points-of">${t('pointsOf', { name: esc(sideNames(match, 0)) })}</p>
                 <div class="target-grid" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr))">${cells}</div>`;
     }
     const [x, y] = draft ?? [0, 0];
@@ -317,7 +430,6 @@ function draftScore(key) {
 }
 
 function teamButton(match, mi, side) {
-    const names = sideNames(match, side);
     if (match.score) return `<div class="team">${match.sides[side].map((id) => `<span>${esc(S.playerName(session, id))}</span>`).join('<span class="plus">+</span>')}</div>`;
     if (session.settings.mode === 'americano') {
         return `<div class="team">${match.sides[side]
@@ -325,7 +437,10 @@ function teamButton(match, mi, side) {
             .join('<span class="plus">+</span>')}</div>`;
 
     }
-    return `<div class="team"><button type="button" class="name-btn" data-action="open-sub" data-match="${mi}" data-unit="${match.pairs[side]}">${esc(names)}</button></div>`;
+    // пара меняется целиком: вся рамка — одна кнопка, но имена расположены так же, как в американо
+    return `<div class="team"><button type="button" class="team-btn" data-action="open-sub" data-match="${mi}" data-unit="${match.pairs[side]}">${match.sides[side]
+        .map((id) => `<span class="uline">${esc(S.playerName(session, id))}</span>`)
+        .join('<span class="plus">+</span>')}</button></div>`;
 }
 
 function matchCard(match, mi, showCourt) {
@@ -364,8 +479,10 @@ function signed(n) {
 }
 
 function renderTable(compact) {
-    const rows = S.table(session);
-    const nameHead = session.settings.mode === 'americano' ? t('player') : t('pair');
+    return renderRows(S.table(session), compact, session.settings.mode === 'americano' ? t('player') : t('pair'));
+}
+
+function renderRows(rows, compact, nameHead) {
     const head = compact
         ? `<tr><th>#</th><th class="name">${nameHead}</th><th>${t('colMatches')}</th><th>${t('colWdl')}</th><th class="key">${t('colDiff')}</th></tr>`
         : `<tr><th>#</th><th class="name">${nameHead}</th><th>${t('colMatches')}</th><th>${t('colWdl')}</th><th>${t('colFor')}</th><th>${t('colAgainst')}</th><th class="key">${t('colDiff')}</th></tr>`;
@@ -432,22 +549,55 @@ function renderGame() {
 
 // ---------- таблица и история ----------
 
-function renderResults() {
+// Подиум: 2-е место слева, 1-е в центре, 3-е справа
+// Медаль для подиума: лента в цветах приложения и кружок золото/серебро/бронза с номером места
+function medal(place) {
+    const [fill, edge, ink] = { 1: ['#f2c230', '#c99a0e', '#5a4300'], 2: ['#d5dae0', '#9aa3ad', '#3d454f'], 3: ['#dc955c', '#a8642e', '#4a2a10'] }[place];
+    return `<svg class="medal" viewBox="0 0 40 50" aria-label="${place}">
+        <path d="M11 0 H19 L23 20 H15 Z" fill="#1f6f4a"/><path d="M21 0 H29 L25 20 H17 Z" fill="#d8ed3a"/>
+        <circle cx="20" cy="33" r="15" fill="${fill}" stroke="${edge}" stroke-width="2.5"/>
+        <text x="20" y="39" text-anchor="middle" font-size="17" font-weight="800" fill="${ink}">${place}</text>
+    </svg>`;
+}
+
+// Подиум: 2-е место слева, 1-е в центре, 3-е справа. Пара выводится двумя строками без «+»
+function podiumHtml(groups) {
+    const entry = (r) => `<span class="pod-entry">${r.name.split(' + ').map((n) => `<span>${esc(n)}</span>`).join('')}</span>`;
+    const col = (g, place) =>
+        g
+            ? `<div class="pod pod${place}">
+                   <div class="pod-names">${g.map(entry).join('')}</div>
+                   <div class="pod-diff">${signed(g[0].diff)}</div>
+                   <div class="pod-step">${medal(place)}</div>
+               </div>`
+            : '<div class="pod"></div>';
+    return `<div class="podium">${col(groups[1], 2)}${col(groups[0], 1)}${col(groups[2], 3)}</div>`;
+}
+
+// Пояснение под подиумом, если места при равной разнице мячей развели дополнительные критерии
+function tiebreakNote(rows) {
+    const { wins, goals } = podiumTiebreaks(rows);
+    const key = wins && goals ? 'tiebreakBoth' : wins ? 'tiebreakWins' : goals ? 'tiebreakGoals' : null;
+    return key ? `<p class="note tiebreak">${t(key)}</p>` : '';
+}
+
+// withTitle — заголовок карточки нужен на «Итогах»; на отдельной вкладке «История» он лишний
+function historyCard(withTitle = true) {
     const s = session;
-    const finished = S.isFinished(s);
-    const champs = finished ? S.winners(s) : [];
     const history = s.rounds
         .map((r, ri) => ({ r, ri }))
         .reverse()
         .map(
-            ({ r, ri }) => `<li>
+            ({ r, ri }) => `<li class="${r.matches.filter((m) => m.score).length === 1 ? 'single' : ''}">
                 <div class="history-round">${t('round', { n: ri + 1 })}</div>
                 ${r.matches
+                    .map((m, mi) => ({ m, mi }))
+                    .filter(({ m }) => m.score)
                     .map(
-                        (m, mi) => `<div class="history-match">
+                        ({ m, mi }) => `<div class="history-match">
                             <div>${r.matches.length > 1 ? `<span class="muted">${t('court', { n: m.court })}:</span> ` : ''}${matchLine(m)}</div>
                             <div class="history-score">${m.score[0]} : ${m.score[1]}
-                                <button type="button" class="btn round ghost" data-action="open-edit" data-round="${ri}" data-match="${mi}" aria-label="${t('edit')}">${icon('pen')}</button>
+                                <button type="button" class="btn round accent" data-action="open-edit" data-round="${ri}" data-match="${mi}" aria-label="${t('edit')}">${icon('pen')}</button>
                             </div>
                         </div>`,
                     )
@@ -455,11 +605,20 @@ function renderResults() {
             </li>`,
         )
         .join('');
+    return `<section class="card">
+        ${withTitle ? `<h2>${icon('clock-rotate-left')} ${t('history')}</h2>` : ''}
+        ${history ? `<ul class="history">${history}</ul>` : `<p class="muted">${t('noMatches')}</p>`}
+    </section>`;
+}
+
+function renderResults() {
+    const s = session;
+    const finished = S.isFinished(s);
     const banner = finished
         ? `<section class="card banner">
-               <div class="banner-icon">${icon('trophy')}</div>
-               <h2>${t('finished')}</h2>
-               <p>${t(champs.length > 1 ? 'winnersAre' : 'winnerIs', { names: champs.map((r) => esc(r.name)).join(', ') })}</p>
+               <h2>${icon('trophy')} ${t('finished')}</h2>
+               ${podiumHtml(S.podiumOf(s))}
+               ${tiebreakNote(S.table(s))}
            </section>`
         : '';
     return `
@@ -470,15 +629,17 @@ function renderResults() {
         ${renderTable(false)}
     </section>
     <div class="actions">
-        ${finished ? btn('undo', t('undoLast'), { iconName: 'rotate-left', cls: 'wide' }) : ''}
-        ${btn('share', t('share'), { iconName: 'share-nodes', cls: 'wide' })}
-        ${btn('ask-restart', t('restartSame'), { iconName: 'shuffle', cls: 'accent wide' })}
-        ${btn('ask-finish', t('finishTournament'), { iconName: 'flag-checkered', cls: 'danger wide' })}
+        ${
+            finished
+                ? `${btn('undo', t('undoLast'), { iconName: 'rotate-left', cls: 'danger wide' })}
+                   ${btn('share', t('share'), { iconName: 'share-nodes', cls: 'wide' })}
+                   ${btn('ask-restart', t('restartSame'), { iconName: 'shuffle', cls: 'accent wide' })}
+                   ${btn('new-tournament', t('newTournament'), { iconName: 'circle-plus', cls: 'primary wide' })}`
+                : `${btn('ask-finish', t('finishEarly'), { iconName: 'flag-checkered', cls: 'accent wide' })}
+                   ${btn('ask-cancel', t('cancelTournament'), { iconName: 'xmark', cls: 'danger wide' })}`
+        }
     </div>
-    <section class="card">
-        <h2>${icon('clock-rotate-left')} ${t('history')}</h2>
-        ${history ? `<ul class="history">${history}</ul>` : `<p class="muted">${t('noMatches')}</p>`}
-    </section>`;
+    ${finished ? '' : historyCard()}`;
 }
 
 function shareText() {
@@ -550,8 +711,33 @@ function brand() {
     </header>`;
 }
 
+function scoringPanel() {
+    const s = session;
+    const target = s.settings.targetSum;
+    if (!S.canChangeScoring(s)) {
+        return `<section class="card stack">
+            <h2>${icon('table-tennis-paddle-ball')} ${t('scoring')}</h2>
+            <p class="muted">${target ? `${t('targetScore')}: ${target}` : t('freeScore')}</p>
+            <p class="note">${t('scoringLocked')}</p>
+        </section>`;
+    }
+    return `<section class="card stack">
+        <h2>${icon('table-tennis-paddle-ball')} ${t('scoring')}</h2>
+        ${segmented('game-scoring', [['free', t('freeScore')], ['target', t('targetScore')]], target ? 'target' : 'free')}
+        ${
+            target
+                ? `<div class="row-between"><h3>${t('targetSumLabel')}</h3>${stepper('game-step-target', target)}</div>
+                   <div class="chips">${[11, 19, 25, 31]
+                       .map((v) => `<button type="button" class="chip ${v === target ? 'on' : ''}" data-action="game-target" data-value="${v}">${v}</button>`)
+                       .join('')}</div>`
+                : ''
+        }
+        <p class="note">${t('scoringUntilFirst')}</p>
+    </section>`;
+}
+
 function renderSettings() {
-    return `${brand()}${switches()}${playersPanel()}`;
+    return `${brand()}${switches()}${scoringPanel()}${playersPanel()}`;
 }
 
 // ---------- диалоги ----------
@@ -585,15 +771,29 @@ function renderDialog() {
 
     if (d.type === 'restart') {
         return `${close}<h2>${t('restartSame')}</h2>
-            <p>${t('restartConfirm')}</p>
+            <p>${t(S.isFinished(session) ? 'restartConfirmFinished' : 'restartConfirm')}</p>
             ${btn('restart', t('restartSame'), { iconName: 'shuffle', cls: 'primary wide' })}
             ${btn('close-dialog', t('cancel'), { cls: 'ghost wide' })}`;
     }
 
     if (d.type === 'finish') {
-        return `${close}<h2>${t('finishTournament')}</h2>
+        return `${close}<h2>${t('finishEarly')}</h2>
             <p>${t('finishConfirm')}</p>
-            ${btn('finish', t('finishTournament'), { iconName: 'flag-checkered', cls: 'danger wide' })}
+            ${btn('finish', t('finishEarly'), { iconName: 'flag-checkered', cls: 'primary wide' })}
+            ${btn('close-dialog', t('cancel'), { cls: 'ghost wide' })}`;
+    }
+
+    if (d.type === 'cancel') {
+        return `${close}<h2>${t('cancelTournament')}</h2>
+            <p>${t('cancelConfirm')}</p>
+            ${btn('cancel-tournament', t('cancelTournament'), { iconName: 'xmark', cls: 'danger wide' })}
+            ${btn('close-dialog', t('cancel'), { cls: 'ghost wide' })}`;
+    }
+
+    if (d.type === 'delete-archive') {
+        return `${close}<h2>${t('deleteFromArchive')}</h2>
+            <p>${t('deleteArchiveConfirm')}</p>
+            ${btn('delete-archive', t('deleteFromArchive'), { iconName: 'trash-can', cls: 'danger wide' })}
             ${btn('close-dialog', t('cancel'), { cls: 'ghost wide' })}`;
     }
 
@@ -610,13 +810,21 @@ function renderDialog() {
 function renderHeader() {
     const tab = (screen, iconName, label) =>
         `<button type="button" class="tab ${view.screen === screen ? 'on' : ''}" data-action="go" data-screen="${screen}">${icon(iconName)}<span>${label}</span></button>`;
+    const setupTab = (name, iconName, label) =>
+        `<button type="button" class="tab ${view.setupTab === name ? 'on' : ''}" data-action="setup-tab" data-tab="${name}">${icon(iconName)}<span>${label}</span></button>`;
     const tabs = session
         ? `<nav class="tabs">
-               ${S.isFinished(session) ? '' : tab('game', 'play', t('game'))}
-               ${tab('results', 'trophy', t('results'))}
-               ${tab('settings', 'gear', t('settings'))}
+               ${
+                   S.isFinished(session)
+                       ? `${tab('results', 'trophy', t('results'))}${tab('matches', 'clock-rotate-left', t('tabHistory'))}`
+                       : `${tab('game', 'play', t('game'))}${tab('results', 'trophy', t('results'))}${tab('settings', 'gear', t('settings'))}`
+               }
            </nav>`
-        : '';
+        : `<nav class="tabs">
+               ${setupTab('params', 'gear', t('tabParams'))}
+               ${setupTab('players', 'users', t('tabPlayers'))}
+               ${setupTab('history', 'clock-rotate-left', t('tabHistory'))}
+           </nav>`;
     return `${session ? '' : brand()}${tabs}`;
 }
 
@@ -624,11 +832,14 @@ function render() {
     document.documentElement.lang = getLang();
     document.title = 'Padel Dashboard';
     const focusedId = document.activeElement?.id;
-    if (session && view.screen === 'game' && S.isFinished(session)) view.screen = 'results';
+    // после завершения нет «Игры» и «Настроек»; пока идёт — нет отдельной «Истории»
+    if (session && S.isFinished(session) && ['game', 'settings'].includes(view.screen)) view.screen = 'results';
+    if (session && !S.isFinished(session) && view.screen === 'matches') view.screen = 'results';
     let body;
     if (!session) body = renderSetup();
     else if (view.screen === 'results') body = renderResults();
     else if (view.screen === 'settings') body = renderSettings();
+    else if (view.screen === 'matches') body = historyCard(false);
     else body = renderGame();
     app.innerHTML = `${renderHeader()}<main>${body}</main>${view.toast ? `<div class="toast" role="status">${esc(view.toast)}</div>` : ''}`;
     if (focusedId) document.getElementById(focusedId)?.focus();
@@ -720,6 +931,10 @@ const actions = {
         else {
             su.pairs.push([su.pickFirst, name]);
             su.pickFirst = null;
+            // последние двое без пары — пара очевидна, собираем её сами
+            const paired = new Set(su.pairs.flat());
+            const rest = su.names.filter((n) => !paired.has(n));
+            if (rest.length === 2) su.pairs.push(rest);
         }
     },
     'random-pairs'() {
@@ -739,6 +954,32 @@ const actions = {
     },
     start() {
         startSession();
+    },
+    'setup-tab'(el) {
+        view.setupTab = el.dataset.tab;
+        view.archiveId = null;
+        window.scrollTo(0, 0);
+    },
+    'step-circle-rounds'(el) {
+        const st = view.setup.settings;
+        const cur = st.circleRounds ?? S.fullPlay(view.setup.names.length, st.courts)?.rounds ?? 1;
+        st.circleRounds = Math.min(200, Math.max(1, cur + Number(el.dataset.delta)));
+    },
+    'open-archive'(el) {
+        view.archiveId = el.dataset.id;
+        window.scrollTo(0, 0);
+    },
+    'archive-back'() {
+        view.archiveId = null;
+    },
+    'ask-delete-archive'() {
+        openDialog({ type: 'delete-archive' });
+        return false;
+    },
+    'delete-archive'() {
+        S.removeFromArchive(storage, view.archiveId);
+        view.archiveId = null;
+        view.dialog = null;
     },
 
     // игра
@@ -764,6 +1005,42 @@ const actions = {
         S.undo(session);
         view.drafts = {};
         persist();
+        // после отмены доигрываем: возвращаемся на «Игру»
+        if (view.screen === 'results' && session.current) {
+            view.screen = 'game';
+            window.scrollTo(0, 0);
+        }
+    },
+    'game-scoring'(el) {
+        S.setTargetSum(session, el.dataset.value === 'target' ? session.settings.targetSum ?? 25 : null);
+        view.drafts = {};
+        persist();
+    },
+    'game-target'(el) {
+        S.setTargetSum(session, Number(el.dataset.value));
+        view.drafts = {};
+        persist();
+    },
+    'game-step-target'(el) {
+        S.setTargetSum(session, Math.min(99, Math.max(2, session.settings.targetSum + Number(el.dataset.delta))));
+        view.drafts = {};
+        persist();
+    },
+    'ask-cancel'() {
+        openDialog({ type: 'cancel' });
+        return false;
+    },
+    'cancel-tournament'() {
+        // без сохранения в «Историю»
+        S.saveLast(storage, session);
+        S.clearSession(storage);
+        session = null;
+        view.screen = 'setup';
+        view.setupTab = 'params';
+        view.setup = defaultSetup();
+        view.dialog = null;
+        view.drafts = {};
+        window.scrollTo(0, 0);
     },
     'open-edit'(el) {
         const round = el.dataset.round === 'current' ? 'current' : Number(el.dataset.round);
@@ -825,10 +1102,19 @@ const actions = {
         return false;
     },
     finish() {
+        S.finishNow(session);
+        persist();
+        view.screen = 'results';
+        view.dialog = null;
+        view.drafts = {};
+        window.scrollTo(0, 0);
+    },
+    'new-tournament'() {
         S.saveLast(storage, session);
         S.clearSession(storage);
         session = null;
         view.screen = 'setup';
+        view.setupTab = 'params';
         view.setup = defaultSetup();
         view.dialog = null;
         view.drafts = {};
@@ -890,6 +1176,11 @@ document.addEventListener('input', (e) => {
     const el = e.target;
     if (el.dataset.input === 'name') {
         view.setup.nameInput = el.value;
+        if (view.setup.nameError) {
+            // без перерисовки, чтобы не сбить ввод
+            view.setup.nameError = '';
+            document.getElementById('name-error')?.remove();
+        }
         return;
     }
     if (el.dataset.input === 'score') {
@@ -980,7 +1271,13 @@ function init() {
     view.setup = defaultSetup();
     const loaded = S.loadSession(storage);
     if (loaded.corrupt) view.dialog = { type: 'corrupt' };
-    else if (loaded.session) {
+    else if (loaded.session && S.isStaleFinished(storage, loaded.session)) {
+        // турнир доигран больше 12 часов назад: он уже в «Истории», открываем стартовый экран.
+        // Если недавно — остаёмся на «Итогах», чтобы можно было отменить последний результат
+        S.saveLast(storage, loaded.session);
+        S.clearSession(storage);
+        view.setup = defaultSetup();
+    } else if (loaded.session) {
         session = loaded.session;
         view.screen = 'game';
     }

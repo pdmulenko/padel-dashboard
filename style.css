@@ -129,6 +129,8 @@ p {
     height: 1.1em;
     flex: none;
     fill: currentColor;
+    /* фигуры Font Awesome доходят до самого края своей области: без этого край подрезается */
+    overflow: visible;
 }
 
 /* ---------- шапка и вкладки ---------- */
@@ -790,7 +792,7 @@ ol.plain li {
 .history-score {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.75rem;
     font-weight: 800;
     white-space: nowrap;
 }
@@ -847,4 +849,262 @@ dialog h2 {
     border-radius: 999rem;
     font-weight: 600;
     max-width: calc(100vw - 2rem);
+}
+
+/* ---------- ровные вертикальные отступы в карточках настроек ---------- */
+
+.stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.stack > * {
+    margin: 0;
+}
+
+.stack > h3 {
+    margin-top: 0.4rem;
+}
+
+.stack .row-between h3 {
+    margin: 0;
+}
+
+.stack .btn + .btn {
+    margin-top: 0;
+}
+
+/* ---------- пара в режиме фиксированных пар: вся рамка — кнопка ---------- */
+
+.team-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.1rem;
+    width: 100%;
+    min-height: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+}
+
+.uline {
+    display: flex;
+    align-items: center;
+    min-height: var(--tap);
+    padding: 0 0.4rem;
+    border-bottom: 0.125rem dotted var(--muted);
+}
+
+/* ---------- подпись «Очки пары: …» над сеткой ---------- */
+
+.points-of {
+    display: table;
+    margin: 0 auto 0.75rem;
+    padding: 0.35rem 0.9rem;
+    border-radius: 999rem;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 1.05rem;
+    text-align: center;
+}
+
+/* ---------- подиум ---------- */
+
+.podium {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: end;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.pod {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.pod-names {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-weight: 700;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+.pod-diff {
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.pod-step {
+    width: 100%;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 0.3rem;
+    border-radius: 0.6rem 0.6rem 0 0;
+    background: var(--accent);
+    color: var(--accent-text);
+    font-size: 1.4rem;
+    font-weight: 800;
+}
+
+.pod1 .pod-step {
+    height: 5.5rem;
+}
+
+.pod2 .pod-step {
+    height: 4.25rem;
+    background: color-mix(in srgb, var(--accent) 80%, var(--card));
+}
+
+.pod3 .pod-step {
+    height: 3.6rem;
+    background: color-mix(in srgb, var(--accent) 60%, var(--card));
+}
+
+.pod1 .pod-names {
+    font-size: 1.15rem;
+}
+
+/* ---------- история турниров ---------- */
+
+.archive-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.archive-item {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
+    text-align: left;
+    font: inherit;
+    color: var(--text);
+    cursor: pointer;
+}
+
+.archive-date {
+    font-weight: 700;
+    font-size: 1.05rem;
+}
+
+.archive-winner {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    font-weight: 600;
+}
+
+.archive-winner .icon {
+    color: var(--trophy, #c9a400);
+}
+
+.banner h2 .icon {
+    color: var(--trophy, #c9a400);
+}
+
+/* три вкладки должны помещаться в узкий экран */
+.tab {
+    min-width: 0;
+    padding: 0 0.25rem;
+    gap: 0.3em;
+    font-size: 0.9rem;
+}
+
+.tab .icon {
+    width: 1em;
+    height: 1em;
+}
+
+.tab span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tabs {
+    display: flex;
+}
+
+.tabs .tab {
+    flex: 1 1 auto;
+}
+
+.medal {
+    width: 2.4rem;
+    height: 3rem;
+}
+
+.pod1 .medal {
+    width: 2.8rem;
+    height: 3.5rem;
+}
+
+.pod-names {
+    gap: 0.35rem;
+}
+
+.pod-entry {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* тур с одним матчем: счёт и кнопка правки — по центру всего блока, включая «Тур N» */
+.history > li.single {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    column-gap: 0.5rem;
+    row-gap: 0.15rem;
+    align-items: center;
+    padding: 0.9rem 0;
+}
+
+.history > li.single:first-child {
+    padding-top: 0.25rem;
+}
+
+.history > li.single:last-child {
+    padding-bottom: 0.25rem;
+}
+
+.history > li.single .history-match {
+    display: contents;
+}
+
+.history > li.single .history-round {
+    grid-column: 1;
+}
+
+.history > li.single .history-score {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+}
+
+/* Все маленькие круглые кнопки (±, добавить, удалить, править) — одного вида:
+   зелёная обводка без заливки. Заливка — только у больших главных кнопок.
+   Крестик закрытия диалога остаётся нейтральным. */
+.btn.round:not(.dialog-close) {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: transparent;
 }
