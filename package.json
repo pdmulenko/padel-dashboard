@@ -3,6 +3,7 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "test": "node --test"
+        "test": "node --test",
+        "sw-version": "node tools/sw-version.mjs"
     }
 }

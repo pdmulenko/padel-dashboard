@@ -69,14 +69,14 @@ function persist() {
     S.syncArchive(storage, session);
 }
 
-function showToast(text) {
+function showToast(text, ms = 2500) {
     view.toast = text;
     render();
     clearTimeout(showToast.timer);
     showToast.timer = setTimeout(() => {
         view.toast = '';
         render();
-    }, 2500);
+    }, ms);
 }
 
 function unitName(id) {
@@ -1282,6 +1282,21 @@ function init() {
         view.screen = 'game';
     }
     render();
+    registerServiceWorker();
+}
+
+// Работа без интернета (см. sw.js). На локальном сервере разработки не включаем, чтобы правки
+// были видны сразу; для проверки можно открыть с ?sw
+function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    const local = ['localhost', '127.0.0.1'].includes(location.hostname);
+    if (local && !new URLSearchParams(location.search).has('sw')) return;
+    // была ли страница уже под управлением прежней версии: тогда смена — это обновление
+    const updating = Boolean(navigator.serviceWorker.controller);
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (updating) showToast(t('updateReady'), 6000);
+    });
+    navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
 init();
