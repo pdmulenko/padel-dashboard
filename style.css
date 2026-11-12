@@ -1108,3 +1108,38 @@ dialog h2 {
     border-color: var(--accent);
     background: transparent;
 }
+
+/* ---------- свайп между вкладками: новый экран «въезжает» со стороны свайпа ---------- */
+
+#app {
+    overflow-x: clip;
+}
+
+@keyframes slide-from-right {
+    from {
+        transform: translateX(1.5rem);
+        opacity: 0.4;
+    }
+}
+
+@keyframes slide-from-left {
+    from {
+        transform: translateX(-1.5rem);
+        opacity: 0.4;
+    }
+}
+
+main.slide-from-right {
+    animation: slide-from-right 0.2s ease-out;
+}
+
+main.slide-from-left {
+    animation: slide-from-left 0.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    main.slide-from-right,
+    main.slide-from-left {
+        animation: none;
+    }
+}

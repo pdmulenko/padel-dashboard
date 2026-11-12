@@ -1139,6 +1139,51 @@ document.addEventListener('click', (e) => {
     if (fn(el) !== false) render();
 });
 
+// ---------- свайп между вкладками ----------
+// Быстрое движение пальцем, заметно больше по горизонтали, чем по вертикали: влево — следующая вкладка,
+// вправо — предыдущая. Не срабатывает в диалогах, полях ввода, на переключателях, на прокручиваемой
+// вбок таблице и у самого края экрана (там системный жест «назад»).
+
+const SWIPE = { minDx: 60, ratio: 1.5, maxMs: 700, edge: 24 };
+let touch = null;
+
+document.addEventListener(
+    'touchstart',
+    (e) => {
+        touch = null;
+        if (e.touches.length !== 1 || view.dialog) return;
+        const p = e.touches[0];
+        if (p.clientX < SWIPE.edge || p.clientX > window.innerWidth - SWIPE.edge) return;
+        if (e.target.closest('input, textarea, select, .switch')) return;
+        const wrap = e.target.closest('.table-wrap');
+        if (wrap && wrap.scrollWidth > wrap.clientWidth) return;
+        touch = { x: p.clientX, y: p.clientY, t: Date.now() };
+    },
+    { passive: true },
+);
+
+document.addEventListener(
+    'touchend',
+    (e) => {
+        if (!touch) return;
+        const p = e.changedTouches[0];
+        const dx = p.clientX - touch.x;
+        const dy = p.clientY - touch.y;
+        const quick = Date.now() - touch.t < SWIPE.maxMs;
+        touch = null;
+        if (!quick || Math.abs(dx) < SWIPE.minDx || Math.abs(dx) < SWIPE.ratio * Math.abs(dy)) return;
+        const tabs = [...document.querySelectorAll('.tabs .tab')];
+        const current = tabs.findIndex((b) => b.classList.contains('on'));
+        const target = current < 0 ? null : tabs[current + (dx < 0 ? 1 : -1)];
+        if (!target) return;
+        target.click();
+        document.querySelector('main')?.classList.add(dx < 0 ? 'slide-from-right' : 'slide-from-left');
+    },
+    { passive: true },
+);
+
+document.addEventListener('touchcancel', () => (touch = null));
+
 document.addEventListener('submit', (e) => {
     e.preventDefault();
     const form = e.target;
