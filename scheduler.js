@@ -91,6 +91,10 @@ export function roundsToEqual(counts, perRound, limit = 500) {
 
 // ---------- американо ----------
 
+// Повтор пары из прошлого тура: стоит дороже любого перекоса в числе встреч,
+// поэтому выбирается, только если иначе никак
+const REPEAT_LAST = 1000;
+
 function americanoHistory(rounds) {
     const partner = new Map();
     const opponent = new Map();
@@ -102,12 +106,20 @@ function americanoHistory(rounds) {
             for (const x of a) for (const y of b) inc(opponent, pairKey(x, y));
         }
     }
-    return { partner, opponent };
+    const last = rounds[rounds.length - 1];
+    const lastPartners = new Set(last ? last.matches.flatMap((m) => m.sides.map(([x, y]) => pairKey(x, y))) : []);
+    return { partner, opponent, lastPartners };
+}
+
+// «Стоимость» пары напарников: сколько раз уже были вместе (+ штраф, если вместе прошлый тур)
+function partnerCost(x, y, hist) {
+    const key = pairKey(x, y);
+    return (hist.partner.get(key) ?? 0) + (hist.lastPartners.has(key) ? REPEAT_LAST : 0);
 }
 
 function matchPenalty(sides, hist) {
     const [a, b] = sides;
-    let p = 10 * ((hist.partner.get(pairKey(a[0], a[1])) ?? 0) + (hist.partner.get(pairKey(b[0], b[1])) ?? 0));
+    let p = 10 * (partnerCost(a[0], a[1], hist) + partnerCost(b[0], b[1], hist));
     for (const x of a) for (const y of b) p += hist.opponent.get(pairKey(x, y)) ?? 0;
     return p;
 }
@@ -151,12 +163,11 @@ function bestGrouping(pairs, hist) {
 // больше — случайный поиск
 function bestPartition(ids, hist, rng) {
     if (ids.length <= 12) {
-        const partnerCost = (pairing) =>
-            pairing.reduce((sum, [x, y]) => sum + (hist.partner.get(pairKey(x, y)) ?? 0), 0);
+        const pairingCost = (pairing) => pairing.reduce((sum, [x, y]) => sum + partnerCost(x, y, hist), 0);
         let minCost = Infinity;
         let pool = [];
         for (const pairing of allPairings(ids)) {
-            const c = partnerCost(pairing);
+            const c = pairingCost(pairing);
             if (c < minCost) {
                 minCost = c;
                 pool = [pairing];

@@ -3,6 +3,7 @@
 import { t, getLang, setLang } from './i18n.js';
 import { scoreFromTarget, isValidScore, podium, podiumTiebreaks } from './scoring.js';
 import * as S from './state.js';
+import { morphInner } from './morph.js';
 
 const app = document.getElementById('app');
 const dlg = document.getElementById('dlg');
@@ -13,6 +14,9 @@ const storage = (() => {
         return { getItem: () => null, setItem: () => {}, removeItem: () => {} };
     }
 })();
+// Номер версии приложения (история — в CHANGELOG.md)
+export const APP_VERSION = '1.5';
+
 const LANG_KEY = 'pd-lang';
 const THEME_KEY = 'pd-theme';
 
@@ -34,8 +38,27 @@ function esc(str) {
     return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 }
 
+// Иконки берутся из спрайта, встроенного в страницу при старте (см. loadSprite);
+// если встроить не удалось — из файла icons.svg
+let spriteUrl = 'icons.svg';
+
 function icon(name) {
-    return `<svg class="icon" aria-hidden="true"><use href="icons.svg#fa-${name}"/></svg>`;
+    return `<svg class="icon" aria-hidden="true"><use href="${spriteUrl}#fa-${name}"/></svg>`;
+}
+
+// Один раз вставить icons.svg прямо в страницу: тогда при перерисовке иконки не подгружаются заново
+async function loadSprite() {
+    try {
+        const svg = await (await fetch('icons.svg')).text();
+        if (!svg.includes('<symbol')) return;
+        const holder = document.createElement('div');
+        holder.hidden = true;
+        holder.innerHTML = svg;
+        document.body.prepend(holder);
+        spriteUrl = '';
+    } catch {
+        // остаёмся на файле icons.svg
+    }
 }
 
 function btn(action, label, { iconName, cls = '', attrs = '', disabled = false } = {}) {
@@ -707,7 +730,7 @@ function playersPanel() {
 
 function brand() {
     return `<header class="top">
-        <div class="brand"><img src="icons/favicon-32x32.png" alt="" width="32" height="32" /><span>Padel Dashboard</span></div>
+        <div class="brand"><img src="icons/favicon-32x32.png" alt="" width="32" height="32" /><span>Padel Dashboard</span><span class="version">v${APP_VERSION}</span></div>
     </header>`;
 }
 
@@ -841,11 +864,11 @@ function render() {
     else if (view.screen === 'settings') body = renderSettings();
     else if (view.screen === 'matches') body = historyCard(false);
     else body = renderGame();
-    app.innerHTML = `${renderHeader()}<main>${body}</main>${view.toast ? `<div class="toast" role="status">${esc(view.toast)}</div>` : ''}`;
+    morphInner(app, `${renderHeader()}<main>${body}</main>${view.toast ? `<div class="toast" role="status">${esc(view.toast)}</div>` : ''}`);
     if (focusedId) document.getElementById(focusedId)?.focus();
 
     if (view.dialog) {
-        dlg.innerHTML = renderDialog();
+        morphInner(dlg, renderDialog());
         if (!dlg.open) dlg.showModal();
     } else if (dlg.open) dlg.close();
     updateWakeLock();
@@ -1177,7 +1200,13 @@ document.addEventListener(
         const target = current < 0 ? null : tabs[current + (dx < 0 ? 1 : -1)];
         if (!target) return;
         target.click();
-        document.querySelector('main')?.classList.add(dx < 0 ? 'slide-from-right' : 'slide-from-left');
+        // блок <main> теперь не пересоздаётся при перерисовке — перезапускаем анимацию явно
+        const main = document.querySelector('main');
+        if (main) {
+            main.classList.remove('slide-from-right', 'slide-from-left');
+            void main.offsetWidth;
+            main.classList.add(dx < 0 ? 'slide-from-right' : 'slide-from-left');
+        }
     },
     { passive: true },
 );
@@ -1302,7 +1331,8 @@ document.addEventListener('visibilitychange', updateWakeLock);
 
 // ---------- старт ----------
 
-function init() {
+async function init() {
+    await loadSprite();
     let lang = 'ru';
     try {
         lang = storage.getItem(LANG_KEY) === 'en' ? 'en' : 'ru';

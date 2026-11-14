@@ -2,7 +2,7 @@
 
 const dict = {
     ru: {
-        updateReady: 'Загружена новая версия — она откроется при следующем запуске.',
+        updateReady: 'Загружено обновление — обновите для установки.',
         finishEarly: 'Завершить турнир досрочно',
         cancelTournament: 'Отменить турнир',
         cancelConfirm: 'Турнир будет сброшен без сохранения в «Историю», и вы вернётесь на стартовый экран. Ники сохранятся для следующего раза. Продолжить?',
@@ -154,7 +154,7 @@ const dict = {
         startOver: 'Начать заново',
     },
     en: {
-        updateReady: 'A new version has been downloaded — it will open next time.',
+        updateReady: 'Update downloaded — reload to install.',
         finishEarly: 'Finish tournament early',
         cancelTournament: 'Cancel tournament',
         cancelConfirm: 'The tournament will be discarded without saving to the history, and you will return to the start screen. Nicknames will be kept for next time. Continue?',

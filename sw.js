@@ -8,7 +8,7 @@
 //
 // VERSION не правится руками: `npm run sw-version` (тест проверяет, что он актуален).
 
-const VERSION = '955010851e29';
+const VERSION = 'fac4a0c32ed6';
 const CACHE = `pd-${VERSION}`;
 
 const FILES = [
@@ -20,6 +20,7 @@ const FILES = [
     'scheduler.js',
     'scoring.js',
     'i18n.js',
+    'morph.js',
     'icons.svg',
     'manifest.json',
     'icons/favicon.ico',

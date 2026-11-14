@@ -267,3 +267,28 @@ test('доигранный турнир считается «старым» че
     assert.ok(!isStaleFinished(storage, s, at('2026-11-08T21:59:00Z')));
     assert.ok(isStaleFinished(storage, s, at('2026-11-08T22:01:00Z')));
 });
+
+test('одна и та же пара не играет вместе два тура подряд', () => {
+    const repeats = (rounds) => {
+        const found = [];
+        for (let t = 1; t < rounds.length; t++) {
+            const prev = new Set(rounds[t - 1].matches.flatMap((m) => m.sides.map((side) => [...side].sort().join('|'))));
+            for (const m of rounds[t].matches) for (const side of m.sides) if (prev.has([...side].sort().join('|'))) found.push(`тур ${t + 1}: ${side.join('+')}`);
+        }
+        return found;
+    };
+    for (const [n, courts] of [
+        [5, 1],
+        [6, 1],
+        [7, 1],
+        [8, 1],
+        [8, 2],
+        [9, 2],
+    ]) {
+        for (let seed = 1; seed <= 15; seed++) {
+            const s = createSession({ mode: 'americano', courts, endMode: 'circles', endCircles: 1 }, names(n), [], seed);
+            while (s.current) playRound(s);
+            assert.deepEqual(repeats(s.rounds), [], `n=${n}, корты=${courts}, seed=${seed}`);
+        }
+    }
+});

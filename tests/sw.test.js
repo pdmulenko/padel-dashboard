@@ -10,7 +10,7 @@ test('sw.js: все файлы из списка кэша существуют',
 
 test('sw.js: в кэш попадают все файлы приложения из git', () => {
     const tracked = execSync('git ls-files', { encoding: 'utf8' }).split('\n').filter(Boolean);
-    const app = tracked.filter((f) => !/^(tests\/|tools\/|SPEC\.md|README\.md|package\.json|\.gitignore|sw\.js)/.test(f));
+    const app = tracked.filter((f) => !/^(tests\/|tools\/|SPEC\.md|README\.md|CHANGELOG\.md|package\.json|\.gitignore|sw\.js)/.test(f));
     const cached = new Set(cachedFiles());
     for (const f of app) assert.ok(cached.has(f), `${f} нет в FILES в sw.js`);
 });
