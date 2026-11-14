@@ -2,6 +2,11 @@
 
 const dict = {
     ru: {
+        playing: 'Играют',
+        substituteFor: 'Кто выходит вместо игрока {name}?',
+        substituteForPair: 'Кто выходит вместо пары {name}?',
+        subResting: 'Заменить на отдыхающего',
+        subSwap: 'Поменяться местами с играющим',
         updateReady: 'Загружено обновление — обновите для установки.',
         finishEarly: 'Завершить турнир досрочно',
         cancelTournament: 'Отменить турнир',
@@ -142,7 +147,6 @@ const dict = {
         close: 'Закрыть',
         editScore: 'Исправить счёт',
         substitute: 'Замена',
-        substituteFor: 'Кто выходит вместо: {name}?',
         nobodyResting: 'Сейчас никто не отдыхает.',
         noReplacement: 'Заменить выбывшего в текущем туре некем.',
         withdraw: 'Снять',
@@ -154,6 +158,11 @@ const dict = {
         startOver: 'Начать заново',
     },
     en: {
+        playing: 'Playing',
+        substituteFor: 'Who comes in for player {name}?',
+        substituteForPair: 'Who comes in for pair {name}?',
+        subResting: 'Replace with a resting player',
+        subSwap: 'Swap places with a playing player',
         updateReady: 'Update downloaded — reload to install.',
         finishEarly: 'Finish tournament early',
         cancelTournament: 'Cancel tournament',
@@ -286,7 +295,6 @@ const dict = {
         close: 'Close',
         editScore: 'Edit score',
         substitute: 'Substitution',
-        substituteFor: 'Who comes in for {name}?',
         nobodyResting: 'Nobody is resting right now.',
         noReplacement: 'Nobody can replace the withdrawn player in the current round.',
         withdraw: 'Withdraw',

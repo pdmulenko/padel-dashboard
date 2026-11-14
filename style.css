@@ -1151,3 +1151,120 @@ main.slide-from-left {
         animation: none;
     }
 }
+
+/* ---------- «Игра»: панель «Играют» ---------- */
+
+.playing .court-block + .court-block {
+    margin-top: 0.9rem;
+    padding-top: 0.9rem;
+    border-top: 0.0625rem solid var(--line);
+}
+
+.court-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin: 0 0 0.6rem;
+    font-size: 1rem;
+}
+
+.court-title .icon {
+    color: var(--accent);
+}
+
+.playing .teams {
+    margin-bottom: 0;
+}
+
+.team .prow {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    width: 100%;
+}
+
+.pname {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
+.pnames {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+}
+
+.btn.round.sub-btn {
+    flex: none;
+}
+
+.btn.round.sub-btn .icon {
+    width: 0.95em;
+    height: 0.95em;
+}
+
+.playing .team {
+    padding: 0.4rem 0.3rem;
+}
+
+.saved-score {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4em;
+    margin: 0.5rem 0 0;
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.resting-row {
+    margin-top: 0.9rem;
+    padding-top: 0.75rem;
+    border-top: 0.0625rem solid var(--line);
+}
+
+.resting-row h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin: 0 0 0.3rem;
+    font-size: 1rem;
+}
+
+.resting-row p {
+    margin: 0;
+}
+
+/* ---------- «Игра»: панель «Счёт» ---------- */
+
+.court-tabs,
+.side-toggle {
+    margin-bottom: 0.75rem;
+}
+
+.court-tabs .seg {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35em;
+}
+
+.side-toggle .seg {
+    line-height: 1.2;
+    padding: 0.35rem 0.4rem;
+}
+
+.score-pairs {
+    display: flex;
+    justify-content: center;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5em;
+    margin: 0 0 0.5rem;
+    font-weight: 600;
+}
