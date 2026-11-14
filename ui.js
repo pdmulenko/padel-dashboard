@@ -423,6 +423,22 @@ function startSession() {
 
 // ---------- игра ----------
 
+// Пара в шапке «Счёта»: имена столбиком; при сумме очков рамка — кнопка выбора, чьи очки вводим
+function scoreTeam(match, side, key, picked) {
+    const names = match.sides[side].map((id) => `<span>${esc(S.playerName(session, id))}</span>`).join('<span class="plus">+</span>');
+    if (key == null) return `<div class="team">${names}</div>`;
+    return `<button type="button" class="team pick-team ${picked ? 'picked' : ''}" data-action="pick-side" data-key="${key}" data-value="${side}">${names}</button>`;
+}
+
+// Шапка: [левая пара] [центр] [правая пара]
+function scoreHead(match, center, key = null, side = 0) {
+    return `<div class="score-head">
+        ${scoreTeam(match, 0, key, key != null && side === 0)}
+        <div class="score-center">${center}</div>
+        ${scoreTeam(match, 1, key, key != null && side === 1)}
+    </div>`;
+}
+
 function scoreInput(key, target, match) {
     const draft = view.drafts[key];
     if (target) {
@@ -433,26 +449,20 @@ function scoreInput(key, target, match) {
             .join('');
         const cols = Math.ceil(Math.sqrt(target + 1));
         const shown = x === null ? '– : –' : side === 0 ? `${x} : ${target - x}` : `${target - x} : ${x}`;
-        // чьи очки вводятся: переключатель с именами пар
-        const toggle = `<div class="segmented side-toggle">${[0, 1]
-            .map(
-                (i) =>
-                    `<button type="button" class="seg ${i === side ? 'on' : ''}" data-action="pick-side" data-key="${key}" data-value="${i}">${esc(sideNames(match, i))}</button>`,
-            )
-            .join('')}</div>`;
-        return `${toggle}
-                <div class="score-display">${shown}</div>
+        // свитч «чьи очки вводим»: влево — левая пара, вправо — правая
+        const sw = `<label class="switch pick-switch"><input type="checkbox" data-toggle="side" data-key="${key}" ${side === 1 ? 'checked' : ''} aria-label="${t('pointsOf', { name: esc(sideNames(match, side)) })}" /><span class="slider"></span></label>`;
+        return `${scoreHead(match, `<div class="score-display">${shown}</div>${sw}`, key, side)}
                 <div class="target-grid" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr))">${cells}</div>`;
     }
     const [x, y] = draft ?? [0, 0];
-    const side = (i, v) => `
+    const sideInput = (i, v) => `
         <div class="score-side">
             <button type="button" class="btn round big" data-action="score-step" data-key="${key}" data-side="${i}" data-delta="-1" aria-label="−">${icon('minus')}</button>
             <input type="number" inputmode="numeric" min="0" class="score-input" data-input="score" data-key="${key}" data-side="${i}" value="${v}" />
             <button type="button" class="btn round big" data-action="score-step" data-key="${key}" data-side="${i}" data-delta="1" aria-label="+">${icon('plus')}</button>
         </div>`;
-    return `<p class="score-pairs"><span>${esc(sideNames(match, 0))}</span><span class="vs">vs</span><span>${esc(sideNames(match, 1))}</span></p>
-            <div class="score-free">${side(0, x)}<span class="score-colon">:</span>${side(1, y)}</div>`;
+    return `${scoreHead(match, '<span class="vs">vs</span>')}
+            <div class="score-free">${sideInput(0, x)}<span class="score-colon">:</span>${sideInput(1, y)}</div>`;
 }
 
 function draftScore(key) {
@@ -482,7 +492,10 @@ function teamBlock(match, mi, side) {
             const b = editable ? subButton(mi, id, S.playerName(session, id)) : '';
             return `<div class="prow">${side === 0 ? b + nameSpan(id) : nameSpan(id) + b}</div>`;
         });
-        return `<div class="team side${side}">${rows.join('<span class="plus">+</span>')}</div>`;
+        // «+» центрируем по колонке имён: на месте кнопки — пустая заглушка той же ширины
+        const gap = editable ? '<span class="sub-gap"></span>' : '';
+        const plus = `<div class="prow">${side === 0 ? gap + '<span class="plus pname">+</span>' : '<span class="plus pname">+</span>' + gap}</div>`;
+        return `<div class="team side${side}">${rows.join(plus)}</div>`;
     }
     const names = `<div class="pnames">${ids.map(nameSpan).join('<span class="plus">+</span>')}</div>`;
     const b = editable ? subButton(mi, match.pairs[side], S.pairName(session, session.pairs.find((p) => p.id === match.pairs[side]))) : '';
@@ -509,15 +522,15 @@ function playingCard(resting, multi, ws) {
             </div>`,
         )
         .join('');
-    const restingRow =
+    const restingCard =
         !ws && resting.length
-            ? `<div class="resting-row"><h3>${icon('mug-hot')} ${t('resting')}</h3><p>${resting.map((id) => esc(unitName(id))).join(', ')}</p></div>`
+            ? `<section class="card resting"><h2>${icon('mug-hot')} ${t('resting')}</h2><p>${resting.map((id) => esc(unitName(id))).join(', ')}</p></section>`
             : '';
-    return `<section class="card playing">
+    return `<section class="card playing ${multi ? 'multi' : ''}">
         <h2>${icon('person-running')} ${t('playing')}</h2>
         ${blocks}
-        ${restingRow}
-    </section>`;
+    </section>
+    ${restingCard}`;
 }
 
 // Панель «Счёт»: ввод результата; при нескольких кортах — вкладки кортов
@@ -540,8 +553,7 @@ function scoreCard() {
                   .join('')}</div>`
             : '';
     const body = m.score
-        ? `<p class="score-pairs"><span>${esc(sideNames(m, 0))}</span><span class="vs">vs</span><span>${esc(sideNames(m, 1))}</span></p>
-           <div class="score-display">${m.score[0]} : ${m.score[1]}</div>
+        ? `${scoreHead(m, `<div class="score-display">${m.score[0]} : ${m.score[1]}</div>`)}
            ${btn('open-edit', t('edit'), { iconName: 'pen', cls: 'accent wide', attrs: `data-round="current" data-match="${mi}"` })}`
         : `${scoreInput(key, session.settings.targetSum, m)}
            ${btn('save-score', t('save'), { iconName: 'check', cls: 'primary wide big', attrs: `data-key="${key}" data-match="${mi}"`, disabled: !draftScore(key) })}`;
@@ -1377,6 +1389,9 @@ document.addEventListener('change', (e) => {
         try {
             storage.setItem(THEME_KEY, theme);
         } catch {}
+        render();
+    } else if (kind === 'side') {
+        view.pointSide[e.target.dataset.key] = e.target.checked ? 1 : 0;
         render();
     } else if (kind === 'lang') {
         const lang = e.target.checked ? 'en' : 'ru';

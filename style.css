@@ -1268,3 +1268,84 @@ main.slide-from-left {
     margin: 0 0 0.5rem;
     font-weight: 600;
 }
+
+/* ---------- правки экрана «Игра» ---------- */
+
+/* «+» по центру колонки имён: заглушка на месте кнопки замены */
+.sub-gap {
+    flex: none;
+    width: var(--tap);
+}
+
+/* при нескольких кортах — черта сразу под «Играют» и между кортами; иконка корта без цвета */
+.playing.multi .court-block {
+    border-top: 0.0625rem solid var(--line);
+    padding-top: 0.9rem;
+}
+
+.court-title .icon {
+    color: inherit;
+}
+
+/* шапка «Счёта»: [пара] [счёт и свитч] [пара] */
+.score-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: stretch;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.score-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+}
+
+.score-center .score-display {
+    margin: 0;
+    font-size: 2rem;
+    white-space: nowrap;
+}
+
+.pick-team {
+    font: inherit;
+    font-weight: 700;
+    color: var(--text);
+    background: var(--team-bg);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+/* выбранная пара: в тёмной теме — салатовая, в светлой — зелёная (салатовый на белом не виден) */
+:root {
+    --pick: var(--accent);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+        --pick: var(--lime);
+    }
+}
+
+:root[data-theme='dark'] {
+    --pick: var(--lime);
+}
+
+.pick-team.picked {
+    border-color: var(--pick);
+    box-shadow: inset 0 0 0 0.0625rem var(--pick);
+    background: color-mix(in srgb, var(--pick) 14%, var(--team-bg));
+}
+
+/* свитч «чьи очки»: обе позиции рабочие, поэтому без серого «выключено» */
+.pick-switch .slider,
+.pick-switch input:checked + .slider {
+    background-color: var(--accent);
+}
+
+.pick-switch input:focus-visible + .slider {
+    outline: 0.15rem solid var(--pick);
+}
