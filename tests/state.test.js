@@ -27,6 +27,7 @@ import {
     isStaleFinished,
     swapCandidates,
     swapPlaying,
+    reopenScore,
     restartSameRoster,
     defaultEndRounds,
 } from '../state.js';
@@ -326,4 +327,18 @@ test('обмен играющих: между кортами в американ
     assert.deepEqual(p.current.matches[0].sides[0], p.pairs.find((x) => x.id === q0).players);
     const ws = createSession({ mode: 'pairs', rotation: 'winnerstays' }, [], [['A1', 'A2'], ['B1', 'B2'], ['C1', 'C2']], 1);
     assert.deepEqual(swapCandidates(ws, ws.current.matches[0].pairs[0]), []);
+});
+
+test('отмена счёта одного корта возвращает матч к вводу, тур не меняется', () => {
+    const s = createSession({ mode: 'americano', courts: 2 }, names(8), [], 2);
+    saveScore(s, 0, [6, 3]);
+    const sides = JSON.stringify(s.current.matches.map((m) => m.sides));
+    reopenScore(s, 0);
+    assert.equal(s.current.matches[0].score, null);
+    assert.equal(s.rounds.length, 0);
+    assert.equal(JSON.stringify(s.current.matches.map((m) => m.sides)), sides);
+    saveScore(s, 0, [6, 4]);
+    saveScore(s, 1, [2, 6]);
+    assert.equal(s.rounds.length, 1);
+    assert.deepEqual(s.rounds[0].matches[0].score, [6, 4]);
 });

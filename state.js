@@ -466,6 +466,14 @@ export function undo(s) {
     return true;
 }
 
+// Снять сохранённый счёт матча текущего тура (тур ещё не доигран) — матч снова ждёт ввода
+export function reopenScore(s, matchIndex) {
+    const m = s.current?.matches[matchIndex];
+    if (!m?.score) return;
+    m.score = null;
+    delete m.seq;
+}
+
 // roundIndex === null — матч текущего тура
 export function editScore(s, roundIndex, matchIndex, score) {
     const round = roundIndex === null ? s.current : s.rounds[roundIndex];

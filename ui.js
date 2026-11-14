@@ -502,6 +502,9 @@ function teamBlock(match, mi, side) {
 }
 
 function courtTitle(match) {
+    if (match.score) {
+        return `<h3 class="court-title">${icon('check')} ${t('court', { n: match.court })}<span class="dot">•</span><span class="muted">${match.score[0]} : ${match.score[1]}</span></h3>`;
+    }
     return `<h3 class="court-title">${icon('border-all')} ${t('court', { n: match.court })}</h3>`;
 }
 
@@ -517,7 +520,6 @@ function playingCard(resting, multi, ws, title, note) {
                     <span class="vs">vs</span>
                     ${teamBlock(m, mi, 1)}
                 </div>
-                ${m.score ? `<p class="saved-score">${icon('check')} ${m.score[0]} : ${m.score[1]}</p>` : ''}
             </div>`,
         )
         .join('');
@@ -526,10 +528,7 @@ function playingCard(resting, multi, ws, title, note) {
             ? `<section class="card resting"><h2>${icon('mug-hot')} ${t('resting')}</h2><p>${resting.map((id) => esc(unitName(id))).join(', ')}</p></section>`
             : '';
     return `<section class="card playing ${multi ? 'multi' : ''}">
-        <div class="card-head">
-            <h2>${icon('person-running')} ${title}</h2>
-            ${S.canUndo(s) ? btn('undo', t('undo'), { iconName: 'rotate-left', cls: 'ghost small' }) : ''}
-        </div>
+        <h2>${icon('person-running')} ${title}</h2>
         ${note}
         ${blocks}
     </section>
@@ -557,7 +556,7 @@ function scoreCard() {
             : '';
     const body = m.score
         ? `${scoreHead(m, `<div class="score-display">${m.score[0]} : ${m.score[1]}</div>`)}
-           ${btn('open-edit', t('edit'), { iconName: 'pen', cls: 'accent wide', attrs: `data-round="current" data-match="${mi}"` })}`
+           ${btn('reopen-score', t('undo'), { iconName: 'rotate-left', cls: 'ghost wide', attrs: `data-match="${mi}"` })}`
         : `${scoreInput(key, session.settings.targetSum, m)}
            ${btn('save-score', t('save'), { iconName: 'check', cls: 'primary wide big', attrs: `data-key="${key}" data-match="${mi}"`, disabled: !draftScore(key) })}`;
     return `<section class="card score-card">
@@ -629,7 +628,7 @@ function renderGame() {
             ? `<section class="card"><h2>${icon('forward')} ${t('queue')}</h2><ol class="plain">${resting.map((id) => `<li>${esc(unitName(id))}</li>`).join('')}</ol></section>`
             : '';
     } else if (s.next) {
-        upcoming = `<section class="card"><h2>${icon('forward')} ${t('nextUp')}</h2><ul class="plain">${s.next.matches
+        upcoming = `<section class="card"><h2>${icon('forward')} ${t('nextUp')}</h2><ul class="plain bare">${s.next.matches
             .map((m) => `<li>${s.next.matches.length > 1 ? `<span class="muted">${t('court', { n: m.court })}:</span> ` : ''}${matchLine(m)}</li>`)
             .join('')}</ul></section>`;
     }
@@ -868,10 +867,10 @@ function renderDialog() {
         const swapList = swaps.length
             ? `<h3>${icon('person-running')} ${t('subSwap')}</h3>
                <div class="list-buttons">${swaps
-                   .map((id) => btn('do-swap', `${esc(unitName(id))}${courtOf(id)}`, { iconName: 'arrows-left-right', cls: 'wide', attrs: `data-unit="${id}"` }))
+                   .map((id) => btn('do-swap', `${esc(unitName(id))}${courtOf(id)}`, { iconName: 'right-left', cls: 'wide', attrs: `data-unit="${id}"` }))
                    .join('')}</div>`
             : '';
-        return `${close}<h2>${icon('shuffle')} ${t('substitute')}</h2>
+        return `${close}<h2>${icon('arrows-left-right')} ${t('substitute')}</h2>
             <p>${t(isAm ? 'substituteFor' : 'substituteForPair', { name: `<b>${esc(unitName(d.unit))}</b>` })}</p>
             ${restingList}${swapList}
             ${!resting.length && !swaps.length ? `<p class="muted">${t('nobodyResting')}</p>` : ''}`;
@@ -1100,6 +1099,16 @@ const actions = {
     },
     'pick-target'(el) {
         view.drafts[el.dataset.key] = [Number(el.dataset.value)];
+    },
+    'reopen-score'(el) {
+        const mi = Number(el.dataset.match);
+        const old = session.current.matches[mi].score;
+        S.reopenScore(session, mi);
+        // прежний счёт подставляем в ввод, чтобы поправить, а не вводить заново
+        if (old) view.drafts[`c${mi}`] = session.settings.targetSum ? [old[0]] : [...old];
+        view.pointSide[`c${mi}`] = 0;
+        view.scoreCourt = mi;
+        persist();
     },
     'pick-side'(el) {
         view.pointSide[el.dataset.key] = Number(el.dataset.value);

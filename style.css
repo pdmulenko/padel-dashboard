@@ -1364,3 +1364,19 @@ main.slide-from-left {
 .card-head h2 {
     margin: 0;
 }
+
+/* «Корт N • счёт» у сыгранного корта */
+.court-title .dot {
+    color: var(--muted);
+    font-size: 0.7em;
+}
+
+.court-title .muted {
+    font-weight: 600;
+}
+
+/* список без маркеров («Следующими играют») */
+ul.plain.bare {
+    list-style: none;
+    padding-left: 0;
+}
