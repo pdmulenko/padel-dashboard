@@ -730,7 +730,7 @@ function playersPanel() {
 
 function brand() {
     return `<header class="top">
-        <div class="brand"><img src="icons/favicon-32x32.png" alt="" width="32" height="32" /><span>Padel Dashboard</span><span class="version">v${APP_VERSION}</span></div>
+        <div class="brand"><img src="icons/favicon-32x32.png" alt="" width="32" height="32" /><span class="brand-title">Padel Dashboard <span class="version">v${APP_VERSION}</span></span></div>
     </header>`;
 }
 
