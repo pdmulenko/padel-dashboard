@@ -449,9 +449,8 @@ function scoreInput(key, target, match) {
             .join('');
         const cols = Math.ceil(Math.sqrt(target + 1));
         const shown = x === null ? '– : –' : side === 0 ? `${x} : ${target - x}` : `${target - x} : ${x}`;
-        // свитч «чьи очки вводим»: влево — левая пара, вправо — правая
-        const sw = `<label class="switch pick-switch"><input type="checkbox" data-toggle="side" data-key="${key}" ${side === 1 ? 'checked' : ''} aria-label="${t('pointsOf', { name: esc(sideNames(match, side)) })}" /><span class="slider"></span></label>`;
-        return `${scoreHead(match, `<div class="score-display">${shown}</div>${sw}`, key, side)}
+        // чьи очки вводим — выбирается тапом по рамке пары
+        return `${scoreHead(match, `<div class="score-display">${shown}</div>`, key, side)}
                 <div class="target-grid" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr))">${cells}</div>`;
     }
     const [x, y] = draft ?? [0, 0];
@@ -507,7 +506,7 @@ function courtTitle(match) {
 }
 
 // Верхняя панель: кто играет сейчас (все корты) и кто отдыхает
-function playingCard(resting, multi, ws) {
+function playingCard(resting, multi, ws, title, note) {
     const s = session;
     const blocks = s.current.matches
         .map(
@@ -527,7 +526,11 @@ function playingCard(resting, multi, ws) {
             ? `<section class="card resting"><h2>${icon('mug-hot')} ${t('resting')}</h2><p>${resting.map((id) => esc(unitName(id))).join(', ')}</p></section>`
             : '';
     return `<section class="card playing ${multi ? 'multi' : ''}">
-        <h2>${icon('person-running')} ${t('playing')}</h2>
+        <div class="card-head">
+            <h2>${icon('person-running')} ${title}</h2>
+            ${S.canUndo(s) ? btn('undo', t('undo'), { iconName: 'rotate-left', cls: 'ghost small' }) : ''}
+        </div>
+        ${note}
         ${blocks}
     </section>
     ${restingCard}`;
@@ -631,13 +634,10 @@ function renderGame() {
             .join('')}</ul></section>`;
     }
     const target = S.targetRounds(s);
+    const title = target ? t('roundOf', { n: s.rounds.length + 1, total: target }) : t('round', { n: s.rounds.length + 1 });
+    const note = eff < s.settings.courts && !ws ? `<p class="note">${t('fewerCourts', { n: eff })}</p>` : '';
     return `
-    <div class="round-head">
-        <h2>${target ? t('roundOf', { n: s.rounds.length + 1, total: target }) : t('round', { n: s.rounds.length + 1 })}</h2>
-        ${S.canUndo(s) ? btn('undo', t('undo'), { iconName: 'rotate-left', cls: 'ghost' }) : ''}
-    </div>
-    ${eff < s.settings.courts && !ws ? `<p class="note">${t('fewerCourts', { n: eff })}</p>` : ''}
-    ${playingCard(resting, multi, ws)}
+    ${playingCard(resting, multi, ws, title, note)}
     ${scoreCard()}
     ${upcoming}
     ${!ws && !s.next && target ? `<p class="note center">${icon('flag-checkered')} ${t('lastRound')}</p>` : ''}`;
@@ -1389,9 +1389,6 @@ document.addEventListener('change', (e) => {
         try {
             storage.setItem(THEME_KEY, theme);
         } catch {}
-        render();
-    } else if (kind === 'side') {
-        view.pointSide[e.target.dataset.key] = e.target.checked ? 1 : 0;
         render();
     } else if (kind === 'lang') {
         const lang = e.target.checked ? 'en' : 'ru';

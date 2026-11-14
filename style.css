@@ -1340,12 +1340,27 @@ main.slide-from-left {
     background: color-mix(in srgb, var(--pick) 14%, var(--team-bg));
 }
 
-/* свитч «чьи очки»: обе позиции рабочие, поэтому без серого «выключено» */
-.pick-switch .slider,
-.pick-switch input:checked + .slider {
-    background-color: var(--accent);
+
+/* центральный столбец шапки «Счёта» фиксированной ширины: рамки пар не ужимаются,
+   даже когда счёт двузначный с обеих сторон */
+.score-head {
+    grid-template-columns: minmax(0, 1fr) 7.5rem minmax(0, 1fr);
 }
 
-.pick-switch input:focus-visible + .slider {
-    outline: 0.15rem solid var(--pick);
+.score-center .score-display {
+    font-size: 1.9rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* заголовок панели с кнопкой справа («Тур N из M» и «Отменить») */
+.card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.card-head h2 {
+    margin: 0;
 }

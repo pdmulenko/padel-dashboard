@@ -2,7 +2,6 @@
 
 const dict = {
     ru: {
-        playing: 'Играют',
         substituteFor: 'Кто выходит вместо игрока {name}?',
         substituteForPair: 'Кто выходит вместо пары {name}?',
         subResting: 'Заменить на отдыхающего',
@@ -158,7 +157,6 @@ const dict = {
         startOver: 'Начать заново',
     },
     en: {
-        playing: 'Playing',
         substituteFor: 'Who comes in for player {name}?',
         substituteForPair: 'Who comes in for pair {name}?',
         subResting: 'Replace with a resting player',
