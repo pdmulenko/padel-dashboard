@@ -333,6 +333,17 @@ function formatDate(iso) {
     }
 }
 
+// «15 ноября 2026» — без «г.», чтобы влезало в узкий столбец списка
+function formatDateShort(iso) {
+    try {
+        const d = new Date(iso);
+        const locale = getLang() === 'en' ? 'en-GB' : 'ru-RU';
+        return `${d.toLocaleDateString(locale, { day: 'numeric', month: 'long' })} ${d.getFullYear()}`;
+    } catch {
+        return iso.slice(0, 10);
+    }
+}
+
 function modeLabel(st) {
     if (st.mode === 'americano') return t('americano');
     return `${t('fixedPairs')} · ${st.rotation === 'winnerstays' ? t('winnerStays') : t('roundRobin')}`;
@@ -382,12 +393,17 @@ function setupHistory() {
         .map((e) => {
             const places = podium(e.rows);
             const who = e.settings.mode === 'americano' ? t('nPlayers', { n: e.participants }) : t('nPairs', { n: e.participants });
+            // [дата, режим, участники] [три места] [›] — шеврон показывает, что карточка открывается
             return `<li><button type="button" class="card archive-item" data-action="open-archive" data-id="${esc(e.id)}">
-                <span class="archive-date">${formatDate(e.finishedAt)}</span>
-                <span class="muted">${modeLabel(e.settings)} · ${who}</span>
-                ${places
+                <span class="archive-info">
+                    <span class="archive-date">${formatDateShort(e.finishedAt)}</span>
+                    <span class="muted">${e.settings.mode === 'americano' ? t('americano') : t('fixedPairs')}</span>
+                    <span class="muted">${who}</span>
+                </span>
+                <span class="archive-podium">${places
                     .map((g, i) => `<span class="archive-place">${medal(i + 1, 'mini')}<span>${g.map((r) => esc(r.name)).join(', ')}</span></span>`)
-                    .join('')}
+                    .join('')}</span>
+                <span class="archive-open">${icon('chevron-right')}</span>
             </button></li>`;
         })
         .join('')}</ul>`;

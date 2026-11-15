@@ -1440,3 +1440,69 @@ h2 .muted {
 .target-grid {
     margin-bottom: 0;
 }
+
+/* ---------- карточка турнира в «Истории»: [инфо] [три места] [›] ---------- */
+
+.archive-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.9rem;
+}
+
+.archive-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    font-size: 0.9rem;
+}
+
+.archive-info .archive-date {
+    font-size: 1rem;
+}
+
+.archive-podium {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.archive-podium .archive-place {
+    gap: 0.4rem;
+    font-size: 0.95rem;
+}
+
+.archive-podium .archive-place > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+/* левый столбец не шире нужного: длинный режим («Фиксированные пары») переносится,
+   а место остаётся именам призёров */
+.archive-info {
+    max-width: 8.5rem;
+}
+
+.archive-open {
+    color: var(--muted);
+    display: flex;
+}
+
+/* чуть плотнее, чтобы обычная пара «Наташа + Сережа» помещалась в одну строку */
+.archive-item {
+    gap: 0.6rem;
+}
+
+.archive-podium .archive-place {
+    font-size: 0.88rem;
+    gap: 0.3rem;
+}
+
+.archive-info {
+    max-width: 7.6rem;
+}
+
+.archive-info .archive-date {
+    font-size: 0.95rem;
+}
