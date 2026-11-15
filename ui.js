@@ -328,12 +328,13 @@ function formatDate(iso) {
     }
 }
 
-// «15 ноября 2026» — без «г.», чтобы влезало в узкий столбец списка
+// Короткая дата для списка «Истории»: по-русски «15.11.2026»; по-английски «15 Nov 2026»
+// (числовой вид там неоднозначен: 11.05 в США — 5 ноября, в Европе — 11 мая)
 function formatDateShort(iso) {
     try {
         const d = new Date(iso);
-        const locale = getLang() === 'en' ? 'en-GB' : 'ru-RU';
-        return `${d.toLocaleDateString(locale, { day: 'numeric', month: 'long' })} ${d.getFullYear()}`;
+        if (getLang() === 'en') return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
     } catch {
         return iso.slice(0, 10);
     }

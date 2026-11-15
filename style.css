@@ -1506,3 +1506,9 @@ h2 .muted {
 .archive-info .archive-date {
     font-size: 0.95rem;
 }
+
+/* левый столбец одинаковой ширины во всех карточках — призёры стоят ровной колонкой */
+.archive-info {
+    width: 6.2rem;
+    max-width: none;
+}
