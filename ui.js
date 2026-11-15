@@ -197,15 +197,12 @@ function setupParams() {
         <p class="note">${t(isPairs ? 'modeHintPairs' : 'modeHintAmericano')}</p>
         ${
             isPairs
-                ? `${SEP}
-                   <h3>${t('rotation')}</h3>
+                ? `<h3>${t('rotation')}</h3>
                    ${segmented(
                        'set-rotation',
                        [['roundrobin', t('roundRobin')], ['winnerstays', t('winnerStays')]],
                        st.rotation,
-                       st.courts > 1 ? ['winnerstays'] : [],
                    )}
-                   ${st.courts > 1 ? `<p class="note">${t('winnerStaysOneCourt')}</p>` : ''}
                    ${
                        ws
                            ? `<div class="row-between">
@@ -941,6 +938,13 @@ function renderDialog() {
             ${!resting.length && !swaps.length ? `<p class="muted">${t('nobodyResting')}</p>` : ''}`;
     }
 
+    if (d.type === 'ws-courts') {
+        return `${close}<h2>${icon('circle-exclamation')} ${t('winnerStays')}</h2>
+            <p>${t('wsCourtsConfirm', { n: view.setup.settings.courts })}</p>
+            ${btn('confirm-ws', t('wsCourtsOk'), { iconName: 'check', cls: 'primary wide' })}
+            ${btn('close-dialog', t('cancel'), { cls: 'ghost wide' })}`;
+    }
+
     if (d.type === 'share') {
         const canSend = Boolean(navigator.share);
         return `${close}<h2>${icon('share-nodes')} ${t('share')}</h2>
@@ -1072,7 +1076,19 @@ const actions = {
         if (el.dataset.value === 'pairs') pairUpNames();
     },
     'set-rotation'(el) {
-        view.setup.settings.rotation = el.dataset.value;
+        const st = view.setup.settings;
+        // «победитель остаётся» — только один корт: при нескольких сначала спрашиваем
+        if (el.dataset.value === 'winnerstays' && st.courts > 1) {
+            openDialog({ type: 'ws-courts' });
+            return false;
+        }
+        st.rotation = el.dataset.value;
+    },
+    'confirm-ws'() {
+        const st = view.setup.settings;
+        st.rotation = 'winnerstays';
+        st.courts = 1;
+        view.dialog = null;
     },
     'set-courts'(el) {
         const st = view.setup.settings;

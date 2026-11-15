@@ -2,6 +2,8 @@
 
 const dict = {
     ru: {
+        wsCourtsConfirm: 'Режим «Победитель остаётся» играется только на одном корте. Число кортов (сейчас {n}) будет сброшено до одного.',
+        wsCourtsOk: 'Играть на одном корте',
         appearance: 'Оформление',
         gameParams: 'Параметры игры',
         courtsCount: 'Число кортов',
@@ -165,6 +167,8 @@ const dict = {
         startOver: 'Начать заново',
     },
     en: {
+        wsCourtsConfirm: '“Winner stays” is played on one court only. The number of courts (now {n}) will be reset to one.',
+        wsCourtsOk: 'Play on one court',
         appearance: 'Appearance',
         gameParams: 'Game settings',
         courtsCount: 'Number of courts',
