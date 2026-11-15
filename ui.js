@@ -720,7 +720,10 @@ function playersPanel() {
         ${
             S.isWinnerStays(s)
                 ? ''
-                : `<div class="row-between"><h3>${t('courts')}</h3>${stepper('game-courts', s.settings.courts)}</div>`
+                : S.canChangeCourts(s)
+                  ? `<div class="row-between"><h3>${t('courts')}</h3>${stepper('game-courts', s.settings.courts)}</div>`
+                  : `<div class="row-between"><h3>${t('courts')}</h3><span class="stepper-value">${s.settings.courts}</span></div>
+                     <p class="note">${t('courtsLocked')}</p>`
         }
         <h3>${isAm ? t('addPlayer') : t('addPair')}</h3>
         ${addForm}

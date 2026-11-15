@@ -25,6 +25,7 @@ import {
     syncArchive,
     loadArchive,
     isStaleFinished,
+    canChangeCourts,
     restartSameRoster,
     defaultEndRounds,
 } from '../state.js';
@@ -291,4 +292,18 @@ test('одна и та же пара не играет вместе два ту�
             assert.deepEqual(repeats(s.rounds), [], `n=${n}, корты=${courts}, seed=${seed}`);
         }
     }
+});
+
+test('число кортов нельзя менять посреди тура с сохранённым счётом', () => {
+    const s = createSession({ mode: 'americano', courts: 2 }, names(8), [], 1);
+    assert.ok(canChangeCourts(s));
+    saveScore(s, 0, [6, 3]);
+    assert.ok(!canChangeCourts(s));
+    setCourts(s, 1);
+    assert.equal(s.settings.courts, 2);
+    assert.equal(s.current.matches.length, 2);
+    saveScore(s, 1, [6, 4]); // тур доигран — следующий ещё не начат
+    assert.ok(canChangeCourts(s));
+    setCourts(s, 1);
+    assert.equal(s.current.matches.length, 1);
 });
