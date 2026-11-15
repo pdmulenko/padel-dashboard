@@ -15,7 +15,7 @@ const storage = (() => {
     }
 })();
 // Номер версии приложения (история — в CHANGELOG.md)
-export const APP_VERSION = '2.0';
+export const APP_VERSION = '2.0.1';
 
 const LANG_KEY = 'pd-lang';
 const THEME_KEY = 'pd-theme';
@@ -1434,7 +1434,11 @@ document.addEventListener('input', (e) => {
 });
 
 // системная тема могла смениться (например, авто-тёмная на закате): сверить переключатель и цвет строки состояния
+// Приложение запущено (init дождался иконок и нарисовал экран); до этого перерисовывать нечего
+let ready = false;
+
 function syncSystemTheme() {
+    if (!ready) return;
     const shown = document.querySelector('[data-action="set-theme"].on')?.dataset.value;
     if (shown && (shown === 'dark') === isDark()) return;
     applyTheme(document.documentElement.dataset.theme ?? null);
@@ -1502,6 +1506,7 @@ async function init() {
         session = loaded.session;
         view.screen = 'game';
     }
+    ready = true;
     render();
     registerServiceWorker();
 }
