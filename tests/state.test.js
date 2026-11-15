@@ -25,6 +25,9 @@ import {
     syncArchive,
     loadArchive,
     isStaleFinished,
+    swapCandidates,
+    swapPlaying,
+    reopenScore,
     canChangeCourts,
     restartSameRoster,
     defaultEndRounds,
@@ -292,6 +295,53 @@ test('одна и та же пара не играет вместе два ту�
             assert.deepEqual(repeats(s.rounds), [], `n=${n}, корты=${courts}, seed=${seed}`);
         }
     }
+});
+
+test('обмен играющих: американо меняет разбиение на пары, напарник не предлагается', () => {
+    const s = createSession({ mode: 'americano' }, names(5), [], 7);
+    const [[a, b], [c, d]] = s.current.matches[0].sides;
+    assert.deepEqual(new Set(swapCandidates(s, a)), new Set([c, d]));
+    swapPlaying(s, a, c);
+    assert.deepEqual(s.current.matches[0].sides, [[c, b], [a, d]]);
+    swapPlaying(s, a, d); // теперь a в паре с d — это напарник, обмен не делается
+    assert.deepEqual(s.current.matches[0].sides, [[c, b], [a, d]]);
+});
+
+test('обмен играющих: между кортами в американо и в режиме пар; в сыгранном матче нельзя', () => {
+    const s = createSession({ mode: 'americano', courts: 2 }, names(8), [], 3);
+    const x = s.current.matches[0].sides[0][0];
+    const y = s.current.matches[1].sides[1][1];
+    assert.equal(swapCandidates(s, x).length, 6);
+    swapPlaying(s, x, y);
+    assert.equal(s.current.matches[0].sides[0][0], y);
+    assert.equal(s.current.matches[1].sides[1][1], x);
+    saveScore(s, 1, [6, 2]);
+    assert.equal(swapCandidates(s, x).length, 0);
+    assert.ok(!swapCandidates(s, y).includes(s.current.matches[1].sides[0][0]));
+
+    const p = createSession({ mode: 'pairs', courts: 2 }, [], [['A1', 'A2'], ['B1', 'B2'], ['C1', 'C2'], ['D1', 'D2']], 1);
+    const [p0, p1] = p.current.matches[0].pairs;
+    const [q0] = p.current.matches[1].pairs;
+    assert.ok(!swapCandidates(p, p0).includes(p1));
+    swapPlaying(p, p0, q0);
+    assert.equal(p.current.matches[0].pairs[0], q0);
+    assert.deepEqual(p.current.matches[0].sides[0], p.pairs.find((x) => x.id === q0).players);
+    const ws = createSession({ mode: 'pairs', rotation: 'winnerstays' }, [], [['A1', 'A2'], ['B1', 'B2'], ['C1', 'C2']], 1);
+    assert.deepEqual(swapCandidates(ws, ws.current.matches[0].pairs[0]), []);
+});
+
+test('отмена счёта одного корта возвращает матч к вводу, тур не меняется', () => {
+    const s = createSession({ mode: 'americano', courts: 2 }, names(8), [], 2);
+    saveScore(s, 0, [6, 3]);
+    const sides = JSON.stringify(s.current.matches.map((m) => m.sides));
+    reopenScore(s, 0);
+    assert.equal(s.current.matches[0].score, null);
+    assert.equal(s.rounds.length, 0);
+    assert.equal(JSON.stringify(s.current.matches.map((m) => m.sides)), sides);
+    saveScore(s, 0, [6, 4]);
+    saveScore(s, 1, [2, 6]);
+    assert.equal(s.rounds.length, 1);
+    assert.deepEqual(s.rounds[0].matches[0].score, [6, 4]);
 });
 
 test('число кортов нельзя менять посреди тура с сохранённым счётом', () => {

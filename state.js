@@ -466,6 +466,14 @@ export function undo(s) {
     return true;
 }
 
+// Снять сохранённый счёт матча текущего тура (тур ещё не доигран) — матч снова ждёт ввода
+export function reopenScore(s, matchIndex) {
+    const m = s.current?.matches[matchIndex];
+    if (!m?.score) return;
+    m.score = null;
+    delete m.seq;
+}
+
 // roundIndex === null — матч текущего тура
 export function editScore(s, roundIndex, matchIndex, score) {
     const round = roundIndex === null ? s.current : s.rounds[roundIndex];
@@ -510,6 +518,60 @@ export function substitute(s, matchIndex, outId, inId) {
         m.pairs[i] = inId;
         m.sides[i] = [...pair.players];
         if (isWinnerStays(s)) s.ws = wsSubstitute(s.ws, outId, inId);
+    }
+    invalidateForecast(s);
+}
+
+// Где в текущем туре стоит участник: { mi, side, pos } (pos — место в паре, только для американо)
+function locate(s, unitId) {
+    for (const [mi, m] of (s.current?.matches ?? []).entries()) {
+        if (s.settings.mode === 'americano') {
+            for (const side of [0, 1]) {
+                const pos = m.sides[side].indexOf(unitId);
+                if (pos >= 0) return { mi, side, pos };
+            }
+        } else {
+            const side = m.pairs.indexOf(unitId);
+            if (side >= 0) return { mi, side, pos: null };
+        }
+    }
+    return null;
+}
+
+// С кем из играющих можно поменяться местами: в американо — с любым игроком несыгранных матчей,
+// кроме своего напарника; в режиме пар — с парой другого корта; в «победитель остаётся» — ни с кем
+export function swapCandidates(s, unitId) {
+    if (isWinnerStays(s)) return [];
+    const me = locate(s, unitId);
+    if (!me || s.current.matches[me.mi].score) return [];
+    const out = [];
+    s.current.matches.forEach((m, mi) => {
+        if (m.score) return;
+        if (s.settings.mode === 'americano') {
+            m.sides.forEach((side, si) =>
+                side.forEach((id) => {
+                    const partner = mi === me.mi && si === me.side;
+                    if (id !== unitId && !partner) out.push(id);
+                }),
+            );
+        } else if (mi !== me.mi) out.push(...m.pairs);
+    });
+    return out;
+}
+
+// Поменять местами двух играющих (меняет разбиение на пары или состав кортов)
+export function swapPlaying(s, aId, bId) {
+    if (!swapCandidates(s, aId).includes(bId)) return;
+    const a = locate(s, aId);
+    const b = locate(s, bId);
+    const ma = s.current.matches[a.mi];
+    const mb = s.current.matches[b.mi];
+    if (s.settings.mode === 'americano') {
+        ma.sides[a.side][a.pos] = bId;
+        mb.sides[b.side][b.pos] = aId;
+    } else {
+        [ma.pairs[a.side], mb.pairs[b.side]] = [bId, aId];
+        [ma.sides[a.side], mb.sides[b.side]] = [mb.sides[b.side], ma.sides[a.side]];
     }
     invalidateForecast(s);
 }
