@@ -8,7 +8,7 @@
 //
 // VERSION не правится руками: `npm run sw-version` (тест проверяет, что он актуален).
 
-const VERSION = 'cf6ab991ee1e';
+const VERSION = '3f7e581c35e1';
 const CACHE = `pd-${VERSION}`;
 
 const FILES = [

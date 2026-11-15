@@ -393,11 +393,12 @@ function setupHistory() {
             return `<li><button type="button" class="card archive-item" data-action="open-archive" data-id="${esc(e.id)}">
                 <span class="archive-info">
                     <span class="archive-date">${formatDateShort(e.finishedAt)}</span>
-                    <span class="muted">${e.settings.mode === 'americano' ? t('americano') : t('fixedPairs')}</span>
+                    <span class="muted">${e.settings.mode === 'americano' ? t('americano') : t('pairsGame')}</span>
                     <span class="muted">${who}</span>
                 </span>
                 <span class="archive-podium">${places
-                    .map((g, i) => `<span class="archive-place">${medal(i + 1, 'mini')}<span>${g.map((r) => esc(r.name)).join(', ')}</span></span>`)
+                    // при дележе места пары переносятся только целиком
+                    .map((g, i) => `<span class="archive-place">${medal(i + 1, 'mini')}<span>${g.map((r) => `<span class="side">${esc(r.name)}</span>`).join(', ')}</span></span>`)
                     .join('')}</span>
                 <span class="archive-open">${icon('chevron-right')}</span>
             </button></li>`;

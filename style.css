@@ -1512,3 +1512,8 @@ h2 .muted {
     width: 6.2rem;
     max-width: none;
 }
+
+/* имена в карточке «Истории» переносятся между парами, а не внутри «Имя + Имя» */
+.archive-podium .archive-place > span {
+    overflow-wrap: normal;
+}
