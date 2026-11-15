@@ -183,6 +183,9 @@ function roundsComment(players, courts, rounds) {
     return lines.map((l) => `<p class="note">${l}</p>`).join('');
 }
 
+// Горизонтальная черта между частями панели
+const SEP = '<hr class="sep" />';
+
 function setupParams() {
     const st = view.setup.settings;
     const isPairs = st.mode === 'pairs';
@@ -190,29 +193,31 @@ function setupParams() {
     return `
     ${switches()}
     <section class="card stack">
-        <h2>${t('mode')}</h2>
+        <h2>${icon('sliders')} ${t('gameFormat')}</h2>
+        <h3>${t('mode')}</h3>
         ${segmented('set-mode', [['americano', t('americano')], ['pairs', t('fixedPairs')]], st.mode)}
         ${
             isPairs
-                ? `<h3>${t('rotation')}</h3>
+                ? `${SEP}
+                   <h3>${t('rotation')}</h3>
                    ${segmented(
                        'set-rotation',
                        [['roundrobin', t('roundRobin')], ['winnerstays', t('winnerStays')]],
                        st.rotation,
                        st.courts > 1 ? ['winnerstays'] : [],
                    )}
-                   ${st.courts > 1 ? `<p class="note">${t('winnerStaysOneCourt')}</p>` : ''}`
+                   ${st.courts > 1 ? `<p class="note">${t('winnerStaysOneCourt')}</p>` : ''}
+                   ${
+                       ws
+                           ? `<div class="row-between">
+                                  <h3>${t('maxStreak')}</h3>
+                                  ${stepper('set-streak', st.maxStreak ?? 0, st.maxStreak ? st.maxStreak : t('off'))}
+                              </div>`
+                           : ''
+                   }`
                 : ''
         }
-        <div class="row-between"><h3>${t('courts')}</h3>${stepper('set-courts', st.courts)}</div>
-        ${
-            ws
-                ? `<div class="row-between">
-                       <h3>${t('maxStreak')}</h3>
-                       ${stepper('set-streak', st.maxStreak ?? 0, st.maxStreak ? st.maxStreak : t('off'))}
-                   </div>`
-                : ''
-        }
+        ${SEP}
         <h3>${t('scoring')}</h3>
         ${segmented('set-scoring', [['free', t('freeScore')], ['target', t('targetScore')]], st.targetSum ? 'target' : 'free')}
         ${
@@ -231,38 +236,47 @@ function setupPlayers() {
     const su = view.setup;
     const st = su.settings;
     const isPairs = st.mode === 'pairs';
+    const ws = isPairs && st.rotation === 'winnerstays';
     const paired = new Set(su.pairs.flat());
     const unpaired = su.names.filter((n) => !paired.has(n));
     const n = su.names.length;
     const endRounds = st.endRounds ?? Math.max(S.defaultEndRounds(n, st.courts), 1);
     const circleRounds = st.circleRounds ?? S.fullPlay(n, st.courts)?.rounds ?? 1;
 
-    const endCard = isPairs
+    // «Турнир»: число кортов и (в американо) конец игры
+    const courtsRow = ws
+        ? `<div class="row-between"><h3>${t('courtsCount')}</h3><span class="stepper-value">1</span></div>
+           <p class="note">${t('winnerStaysOneCourt')}</p>`
+        : `<div class="row-between"><h3>${t('courtsCount')}</h3>${stepper('set-courts', st.courts)}</div>`;
+    const endPart = isPairs
         ? ''
-        : `<section class="card stack">
-               <h2>${t('endOfGame')}</h2>
-               ${segmented('set-end', [['free', t('endFree')], ['rounds', t('endRounds')], ['circles', t('endCircles')]], st.endMode)}
-               ${
-                   st.endMode === 'rounds'
-                       ? `<div class="row-between"><h3>${t('roundsCount')}</h3>${stepper('step-end-rounds', endRounds)}</div>
-                          ${roundsComment(n, st.courts, endRounds)}`
-                       : ''
-               }
-               ${
-                   st.endMode === 'circles'
-                       ? `<div class="row-between"><h3>${t('circlesCount')}</h3>${stepper('step-end-circles', st.endCircles)}</div>
-                          <div class="row-between"><h3>${t('circleRoundsLabel')}</h3>${stepper('step-circle-rounds', circleRounds)}</div>
-                          ${roundsComment(n, st.courts, st.endCircles * circleRounds)}`
-                       : ''
-               }
-           </section>`;
+        : `${SEP}
+           <h3>${t('endOfGame')}</h3>
+           ${segmented('set-end', [['free', t('endFree')], ['rounds', t('endRounds')], ['circles', t('endCircles')]], st.endMode)}
+           ${
+               st.endMode === 'rounds'
+                   ? `<div class="row-between"><h3>${t('roundsCount')}</h3>${stepper('step-end-rounds', endRounds)}</div>
+                      ${roundsComment(n, st.courts, endRounds)}`
+                   : ''
+           }
+           ${
+               st.endMode === 'circles'
+                   ? `<div class="row-between"><h3>${t('circlesCount')}</h3>${stepper('step-end-circles', st.endCircles)}</div>
+                      <div class="row-between"><h3>${t('circleRoundsLabel')}</h3>${stepper('step-circle-rounds', circleRounds)}</div>
+                      ${roundsComment(n, st.courts, st.endCircles * circleRounds)}`
+                   : ''
+           }`;
+    const tournamentCard = `<section class="card stack">
+        <h2>${icon('calendar-check')} ${t('tournament')}</h2>
+        ${courtsRow}
+        ${endPart}
+    </section>`;
 
-    return `
-    <section class="card stack">
-        <h2>${t('players')} <span class="muted">${n}</span></h2>
+    const playersCard = `<section class="card stack">
+        <h2>${icon('users')} ${t('players')}<span class="dot">•</span><span class="muted">${n}</span></h2>
         <form class="add-row" data-form="add-name">
             <input type="text" id="name-input" data-input="name" value="${esc(su.nameInput)}" placeholder="${t('nickname')}" autocomplete="off" enterkeyhint="done" maxlength="24" />
-            <button type="submit" class="btn round primary" aria-label="${t('add')}">${icon('plus')}</button>
+            <button type="submit" class="btn round" aria-label="${t('add')}">${icon('plus')}</button>
         </form>
         ${su.nameError ? `<p class="error" id="name-error">${icon('circle-exclamation')} ${su.nameError}</p>` : ''}
         ${n === 0 && su.last?.names?.length ? btn('use-last', t('sameAsLast'), { iconName: 'clock-rotate-left', cls: 'wide ghost' }) : ''}
@@ -271,43 +285,45 @@ function setupPlayers() {
                 ? `<ul class="name-list">${su.names
                       .map(
                           (name) =>
-                              `<li><span>${esc(name)}</span><button type="button" class="btn round ghost" data-action="remove-name" data-name="${esc(name)}" aria-label="${t('remove')}">${icon('xmark')}</button></li>`,
+                              `<li><span>${esc(name)}</span><button type="button" class="btn round" data-action="remove-name" data-name="${esc(name)}" aria-label="${t('remove')}">${icon('xmark')}</button></li>`,
                       )
                       .join('')}</ul>`
                 : ''
         }
-    </section>
+    </section>`;
 
-    ${
-        isPairs
-            ? `<section class="card stack">
-                <h2>${t('pairs')} <span class="muted">${su.pairs.length}</span></h2>
-                ${
-                    unpaired.length
-                        ? `<p class="note">${t('pickPartner')}</p>
-                           <div class="chips">${unpaired
-                               .map(
-                                   (name) =>
-                                       `<button type="button" class="chip ${su.pickFirst === name ? 'on' : ''}" data-action="pick-partner" data-name="${esc(name)}">${esc(name)}</button>`,
-                               )
-                               .join('')}</div>
-                           ${btn('random-pairs', t('randomPairs'), { iconName: 'shuffle', cls: 'wide ghost' })}`
-                        : ''
-                }
-                ${
-                    su.pairs.length
-                        ? `<ul class="name-list">${su.pairs
+    const pairsCard = isPairs
+        ? `<section class="card stack">
+               <h2>${icon('people-group')} ${t('pairs')}<span class="dot">•</span><span class="muted">${su.pairs.length}</span></h2>
+               ${
+                   unpaired.length
+                       ? `<p class="note">${t('pickPartner')}</p>
+                          <div class="chips">${unpaired
                               .map(
-                                  ([a, b], i) =>
-                                      `<li><span>${esc(a)} + ${esc(b)}</span><button type="button" class="btn round ghost" data-action="unpair" data-index="${i}" aria-label="${t('remove')}">${icon('xmark')}</button></li>`,
+                                  (name) =>
+                                      `<button type="button" class="chip ${su.pickFirst === name ? 'on' : ''}" data-action="pick-partner" data-name="${esc(name)}">${esc(name)}</button>`,
                               )
-                              .join('')}</ul>`
-                        : ''
-                }
-            </section>`
-            : ''
-    }
-    ${endCard}
+                              .join('')}</div>
+                          ${btn('random-pairs', t('randomPairs'), { iconName: 'shuffle', cls: 'wide ghost' })}`
+                       : ''
+               }
+               ${
+                   su.pairs.length
+                       ? `<ul class="name-list">${su.pairs
+                             .map(
+                                 ([a, b], i) =>
+                                     `<li><span>${esc(a)} + ${esc(b)}</span><button type="button" class="btn round" data-action="unpair" data-index="${i}" aria-label="${t('remove')}">${icon('xmark')}</button></li>`,
+                             )
+                             .join('')}</ul>`
+                       : ''
+               }
+           </section>`
+        : '';
+
+    return `
+    ${tournamentCard}
+    ${playersCard}
+    ${pairsCard}
     ${su.error ? `<p class="error">${icon('circle-exclamation')} ${su.error}</p>` : ''}
     ${btn('start', t('start'), { iconName: 'play', cls: 'primary wide big' })}`;
 }
@@ -367,12 +383,14 @@ function setupHistory() {
     if (!list.length) return `<section class="card"><p class="muted">${t('archiveEmpty')}</p></section>`;
     return `<ul class="archive-list">${list
         .map((e) => {
-            const champs = podium(e.rows)[0] ?? [];
+            const places = podium(e.rows);
             const who = e.settings.mode === 'americano' ? t('nPlayers', { n: e.participants }) : t('nPairs', { n: e.participants });
             return `<li><button type="button" class="card archive-item" data-action="open-archive" data-id="${esc(e.id)}">
                 <span class="archive-date">${formatDate(e.finishedAt)}</span>
                 <span class="muted">${modeLabel(e.settings)} · ${who}</span>
-                <span class="archive-winner">${icon('trophy')} ${champs.map((r) => esc(r.name)).join(', ')}</span>
+                ${places
+                    .map((g, i) => `<span class="archive-place">${medal(i + 1, 'mini')}<span>${g.map((r) => esc(r.name)).join(', ')}</span></span>`)
+                    .join('')}
             </button></li>`;
         })
         .join('')}</ul>`;
@@ -574,9 +592,9 @@ function renderGame() {
 
 // Подиум: 2-е место слева, 1-е в центре, 3-е справа
 // Медаль для подиума: лента в цветах приложения и кружок золото/серебро/бронза с номером места
-function medal(place) {
+function medal(place, cls = '') {
     const [fill, edge, ink] = { 1: ['#f2c230', '#c99a0e', '#5a4300'], 2: ['#d5dae0', '#9aa3ad', '#3d454f'], 3: ['#dc955c', '#a8642e', '#4a2a10'] }[place];
-    return `<svg class="medal" viewBox="0 0 40 50" aria-label="${place}">
+    return `<svg class="medal ${cls}" viewBox="0 0 40 50" aria-label="${place}">
         <path d="M11 0 H19 L23 20 H15 Z" fill="#1f6f4a"/><path d="M21 0 H29 L25 20 H17 Z" fill="#d8ed3a"/>
         <circle cx="20" cy="33" r="15" fill="${fill}" stroke="${edge}" stroke-width="2.5"/>
         <text x="20" y="39" text-anchor="middle" font-size="17" font-weight="800" fill="${ink}">${place}</text>
@@ -701,20 +719,20 @@ function playersPanel() {
             return `<li class="${u.active ? '' : 'inactive'}"><span>${esc(name)}${u.active ? '' : ` <span class="muted">(${t('withdrawn')})</span>`}</span>
                 ${
                     u.active
-                        ? btn('toggle-active', t('withdraw'), { iconName: 'user-slash', cls: 'ghost small', attrs: `data-unit="${u.id}"` })
-                        : btn('toggle-active', t('return'), { iconName: 'user-check', cls: 'ghost small', attrs: `data-unit="${u.id}"` })
+                        ? `<button type="button" class="btn round" data-action="toggle-active" data-unit="${u.id}" aria-label="${t('withdraw')}">${icon('xmark')}</button>`
+                        : `<button type="button" class="btn round" data-action="toggle-active" data-unit="${u.id}" aria-label="${t('return')}">${icon('plus')}</button>`
                 }</li>`;
         })
         .join('');
     const addForm = isAm
         ? `<form class="add-row" data-form="add-player">
                <input type="text" name="a" placeholder="${t('nickname')}" autocomplete="off" maxlength="24" />
-               <button type="submit" class="btn round primary" aria-label="${t('add')}">${icon('user-plus')}</button>
+               <button type="submit" class="btn round" aria-label="${t('add')}">${icon('plus')}</button>
            </form>`
         : `<form class="add-row" data-form="add-pair">
                <input type="text" name="a" placeholder="${t('nickname')} 1" autocomplete="off" maxlength="24" />
                <input type="text" name="b" placeholder="${t('nickname')} 2" autocomplete="off" maxlength="24" />
-               <button type="submit" class="btn round primary" aria-label="${t('add')}">${icon('user-plus')}</button>
+               <button type="submit" class="btn round" aria-label="${t('add')}">${icon('plus')}</button>
            </form>`;
     return `<section class="card"><h2>${icon('users')} ${t('playersAndCourts')}</h2>
         ${

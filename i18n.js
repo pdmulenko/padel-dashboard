@@ -2,6 +2,9 @@
 
 const dict = {
     ru: {
+        gameFormat: 'Формат игры',
+        tournament: 'Турнир',
+        courtsCount: 'Число кортов',
         courtsLocked: 'Число кортов можно поменять, когда текущий тур будет доигран.',
         updateReady: 'Загружено обновление — обновите для установки.',
         finishEarly: 'Завершить турнир досрочно',
@@ -155,6 +158,9 @@ const dict = {
         startOver: 'Начать заново',
     },
     en: {
+        gameFormat: 'Game format',
+        tournament: 'Tournament',
+        courtsCount: 'Number of courts',
         courtsLocked: 'The number of courts can be changed once the current round is finished.',
         updateReady: 'Update downloaded — reload to install.',
         finishEarly: 'Finish tournament early',

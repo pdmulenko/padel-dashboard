@@ -1161,3 +1161,37 @@ main.slide-from-left {
 :root[data-theme='dark'] {
     color-scheme: only dark;
 }
+
+/* ---------- стартовый экран ---------- */
+
+.sep {
+    border: 0;
+    border-top: 0.0625rem solid var(--line);
+    margin: 0.35rem 0 !important;
+}
+
+h2 .dot {
+    color: var(--muted);
+    font-size: 0.7em;
+}
+
+h2 .muted {
+    font-weight: 600;
+}
+
+.archive-place {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+}
+
+.medal.mini {
+    width: 1.1rem;
+    height: 1.4rem;
+    flex: none;
+}
+
+.stack > .sep + h3 {
+    margin-top: 0;
+}
