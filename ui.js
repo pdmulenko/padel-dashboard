@@ -147,6 +147,7 @@ function defaultSetup() {
         pairs: [],
         pickFirst: null,
         nameInput: '',
+        pairInput: ['', ''], // ввод пары в режиме пар: «Ник 1», «Ник 2»
         nameError: '',
         targetValue: last?.settings?.targetSum ?? 25,
         error: '',
@@ -235,8 +236,6 @@ function setupPlayers() {
     const st = su.settings;
     const isPairs = st.mode === 'pairs';
     const ws = isPairs && st.rotation === 'winnerstays';
-    const paired = new Set(su.pairs.flat());
-    const unpaired = su.names.filter((n) => !paired.has(n));
     const n = su.names.length;
     const endRounds = st.endRounds ?? Math.max(S.defaultEndRounds(n, st.courts), 1);
     const circleRounds = st.circleRounds ?? S.fullPlay(n, st.courts)?.rounds ?? 1;
@@ -290,21 +289,17 @@ function setupPlayers() {
         }
     </section>`;
 
+    // В режиме пар состав вводится сразу парами — как в настройках во время игры
     const pairsCard = isPairs
         ? `<section class="card stack">
                <h2>${icon('people-group')} ${t('pairs')}<span class="dot">•</span><span class="muted">${su.pairs.length}</span></h2>
-               ${
-                   unpaired.length
-                       ? `<p class="note">${t('pickPartner')}</p>
-                          <div class="chips">${unpaired
-                              .map(
-                                  (name) =>
-                                      `<button type="button" class="chip ${su.pickFirst === name ? 'on' : ''}" data-action="pick-partner" data-name="${esc(name)}">${esc(name)}</button>`,
-                              )
-                              .join('')}</div>
-                          ${btn('random-pairs', t('randomPairs'), { iconName: 'shuffle', cls: 'wide ghost' })}`
-                       : ''
-               }
+               <form class="add-row" data-form="add-pair-setup">
+                   <input type="text" id="pair-a" data-input="pair" data-i="0" value="${esc(su.pairInput[0])}" placeholder="${t('nickname')} 1" autocomplete="off" enterkeyhint="next" maxlength="24" />
+                   <input type="text" id="pair-b" data-input="pair" data-i="1" value="${esc(su.pairInput[1])}" placeholder="${t('nickname')} 2" autocomplete="off" enterkeyhint="done" maxlength="24" />
+                   <button type="submit" class="btn round" aria-label="${t('add')}">${icon('plus')}</button>
+               </form>
+               ${su.nameError ? `<p class="error" id="name-error">${icon('circle-exclamation')} ${su.nameError}</p>` : ''}
+               ${!su.pairs.length && su.last?.names?.length ? btn('use-last', t('sameAsLast'), { iconName: 'clock-rotate-left', cls: 'wide ghost' }) : ''}
                ${
                    su.pairs.length
                        ? `<ul class="name-list">${su.pairs
@@ -320,8 +315,7 @@ function setupPlayers() {
 
     return `
     ${tournamentCard}
-    ${playersCard}
-    ${pairsCard}
+    ${isPairs ? pairsCard : playersCard}
     ${su.error ? `<p class="error">${icon('circle-exclamation')} ${su.error}</p>` : ''}
     ${btn('start', t('start'), { iconName: 'play', cls: 'primary wide big' })}`;
 }
@@ -430,20 +424,51 @@ function addName() {
     su.error = '';
 }
 
+// Пара из полей «Ник 1» и «Ник 2»; ники уникальны среди всех участников
+function addPairSetup() {
+    const su = view.setup;
+    const [a, b] = su.pairInput.map((x) => x.trim());
+    if (!a) return 'pair-a';
+    if (!b) return 'pair-b';
+    const taken = [a, b].find((n) => su.names.some((x) => x.toLowerCase() === n.toLowerCase()));
+    if (taken || a.toLowerCase() === b.toLowerCase()) {
+        su.nameError = t('nameTaken', { name: taken ?? b });
+        return null;
+    }
+    su.names.push(a, b);
+    su.pairs.push([a, b]);
+    su.pairInput = ['', ''];
+    su.nameError = '';
+    su.error = '';
+    return 'pair-a';
+}
+
+// При переходе в режим пар уже введённые игроки собираются в пары по порядку ввода;
+// лишний (при нечётном числе) подставляется в «Ник 1», чтобы вписать ему напарника
+function pairUpNames() {
+    const su = view.setup;
+    const paired = new Set(su.pairs.flat());
+    const rest = su.names.filter((n) => !paired.has(n));
+    for (let i = 0; i + 1 < rest.length; i += 2) su.pairs.push([rest[i], rest[i + 1]]);
+    if (rest.length % 2 === 1) {
+        const last = rest[rest.length - 1];
+        su.names = su.names.filter((n) => n !== last);
+        if (!su.pairInput[0]) su.pairInput = [last, su.pairInput[1]];
+    }
+}
+
 function startSession() {
     const su = view.setup;
     const st = su.settings;
     let error = '';
     if (st.mode === 'americano') {
         if (su.names.length < 4) error = t('needPlayers');
-    } else if (su.names.length % 2 === 1) error = t('oddPlayers');
-    else if (su.pairs.length * 2 < su.names.length) error = t('unpaired');
-    else if (su.pairs.length < 2) error = t('needPairs');
+    } else if (su.pairs.length < 2) error = t('needPairs');
     if (error) {
         su.error = error;
         return;
     }
-    session = S.createSession(st, su.names, su.pairs);
+    session = S.createSession(st, st.mode === 'pairs' ? su.pairs.flat() : su.names, su.pairs);
     S.saveLast(storage, session);
     view.screen = 'game';
     view.drafts = {};
@@ -1042,6 +1067,7 @@ const actions = {
     // настройка
     'set-mode'(el) {
         view.setup.settings.mode = el.dataset.value;
+        if (el.dataset.value === 'pairs') pairUpNames();
     },
     'set-rotation'(el) {
         view.setup.settings.rotation = el.dataset.value;
@@ -1090,36 +1116,13 @@ const actions = {
         const su = view.setup;
         su.names = [...su.last.names];
         su.pairs = su.settings.mode === 'pairs' ? (su.last.pairs ?? []).map((p) => [...p]) : [];
+        if (su.settings.mode === 'pairs') pairUpNames();
         su.error = '';
     },
-    'pick-partner'(el) {
-        const su = view.setup;
-        const name = el.dataset.name;
-        if (!su.pickFirst) su.pickFirst = name;
-        else if (su.pickFirst === name) su.pickFirst = null;
-        else {
-            su.pairs.push([su.pickFirst, name]);
-            su.pickFirst = null;
-            // последние двое без пары — пара очевидна, собираем её сами
-            const paired = new Set(su.pairs.flat());
-            const rest = su.names.filter((n) => !paired.has(n));
-            if (rest.length === 2) su.pairs.push(rest);
-        }
-    },
-    'random-pairs'() {
-        const su = view.setup;
-        const paired = new Set(su.pairs.flat());
-        const rest = su.names.filter((n) => !paired.has(n));
-        for (let i = rest.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [rest[i], rest[j]] = [rest[j], rest[i]];
-        }
-        for (let i = 0; i + 1 < rest.length; i += 2) su.pairs.push([rest[i], rest[i + 1]]);
-        su.pickFirst = null;
-        if (rest.length % 2 === 1) su.error = t('oddPlayers');
-    },
     unpair(el) {
-        view.setup.pairs.splice(Number(el.dataset.index), 1);
+        const su = view.setup;
+        const [pair] = su.pairs.splice(Number(el.dataset.index), 1);
+        su.names = su.names.filter((n) => !pair.includes(n));
     },
     start() {
         startSession();
@@ -1404,6 +1407,13 @@ document.addEventListener('submit', (e) => {
         document.getElementById('name-input')?.focus();
         return;
     }
+    if (kind === 'add-pair-setup') {
+        // Enter в «Ник 1» переводит в «Ник 2»; в «Ник 2» — добавляет пару
+        const next = addPairSetup();
+        render();
+        if (next) document.getElementById(next)?.focus();
+        return;
+    }
     const a = form.elements.a?.value.trim() ?? '';
     const b = form.elements.b?.value.trim() ?? '';
     if (kind === 'add-player') {
@@ -1429,6 +1439,14 @@ document.addEventListener('submit', (e) => {
 
 document.addEventListener('input', (e) => {
     const el = e.target;
+    if (el.dataset.input === 'pair') {
+        view.setup.pairInput[Number(el.dataset.i)] = el.value;
+        if (view.setup.nameError) {
+            view.setup.nameError = '';
+            document.getElementById('name-error')?.remove();
+        }
+        return;
+    }
     if (el.dataset.input === 'name') {
         view.setup.nameInput = el.value;
         if (view.setup.nameError) {
