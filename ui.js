@@ -523,16 +523,17 @@ function playingCard(resting, multi, ws, title, note) {
             </div>`,
         )
         .join('');
-    const restingCard =
+    // «Отдыхают» — в конце той же панели, под чертой: экономим высоту, чтобы «Сохранить» была ближе
+    const restingRow =
         !ws && resting.length
-            ? `<section class="card resting"><h2>${icon('mug-hot')} ${t('resting')}</h2><p>${resting.map((id) => esc(unitName(id))).join(', ')}</p></section>`
+            ? `<div class="resting-row"><h3>${icon('mug-hot')} ${t('resting')}</h3><p>${resting.map((id) => esc(unitName(id))).join(', ')}</p></div>`
             : '';
     return `<section class="card playing ${multi ? 'multi' : ''}">
         <h2>${icon('person-running')} ${title}</h2>
         ${note}
         ${blocks}
-    </section>
-    ${restingCard}`;
+        ${restingRow}
+    </section>`;
 }
 
 // Панель «Счёт»: ввод результата; при нескольких кортах — вкладки кортов
