@@ -226,7 +226,7 @@ function setupParams() {
                 : ''
         }
     </section>
-    ${btn('setup-tab', t('nextPlayers'), { iconName: 'users', cls: 'primary wide big', attrs: 'data-tab="players"' })}`;
+    ${btn('setup-tab', t('nextPlayers'), { iconName: 'calendar-check', cls: 'primary wide big', attrs: 'data-tab="players"' })}`;
 }
 
 function setupPlayers() {
@@ -264,7 +264,7 @@ function setupPlayers() {
                    : ''
            }`;
     const tournamentCard = `<section class="card stack">
-        <h2>${icon('calendar-check')} ${t('tournament')}</h2>
+        <h2>${icon('hourglass-half')} ${t('courtsAndLength')}</h2>
         ${courtsRow}
         ${endPart}
     </section>`;
@@ -960,8 +960,8 @@ function renderHeader() {
                }
            </nav>`
         : `<nav class="tabs">
-               ${setupTab('params', 'gear', t('tabParams'))}
-               ${setupTab('players', 'users', t('tabPlayers'))}
+               ${setupTab('params', 'sliders', t('tabParams'))}
+               ${setupTab('players', 'calendar-check', t('tabPlayers'))}
                ${setupTab('history', 'clock-rotate-left', t('tabHistory'))}
            </nav>`;
     return `${session ? '' : brand()}${tabs}`;
