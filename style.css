@@ -1161,3 +1161,31 @@ main.slide-from-left {
 :root[data-theme='dark'] {
     color-scheme: only dark;
 }
+
+/* пара в строке матча переносится только целиком */
+.side {
+    white-space: nowrap;
+}
+
+.sep {
+    border: 0;
+    border-top: 0.0625rem solid var(--line);
+    margin: 0.35rem 0 !important;
+}
+
+.stack > .sep + h3 {
+    margin-top: 0;
+}
+
+/* предпросмотр текста итогов в окне «Поделиться» */
+.share-preview {
+    margin: 0 0 0.75rem;
+    padding: 0.75rem;
+    max-height: 40vh;
+    overflow: auto;
+    border-radius: 0.6rem;
+    background: var(--bg);
+    font: inherit;
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+}

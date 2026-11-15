@@ -2,6 +2,11 @@
 
 const dict = {
     ru: {
+        gameParams: 'Параметры игры',
+        courtsCount: 'Число кортов',
+        copyResults: 'Скопировать',
+        sendResults: 'Отправить',
+        androidBackNote: 'После отправки вернитесь в приложение кнопкой «Назад» — иначе при следующем открытии вы снова попадёте в мессенджер.',
         courtsLocked: 'Число кортов можно поменять, когда текущий тур будет доигран.',
         updateReady: 'Загружено обновление — обновите для установки.',
         finishEarly: 'Завершить турнир досрочно',
@@ -155,6 +160,11 @@ const dict = {
         startOver: 'Начать заново',
     },
     en: {
+        gameParams: 'Game settings',
+        courtsCount: 'Number of courts',
+        copyResults: 'Copy',
+        sendResults: 'Send',
+        androidBackNote: 'After sending, return to the app with the Back button — otherwise the messenger will open next time instead.',
         courtsLocked: 'The number of courts can be changed once the current round is finished.',
         updateReady: 'Update downloaded — reload to install.',
         finishEarly: 'Finish tournament early',

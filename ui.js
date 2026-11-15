@@ -338,7 +338,7 @@ function setupHistory() {
                     ${r
                         .map(
                             (m) => `<div class="history-match">
-                                <div>${r.length > 1 ? `<span class="muted">${t('court', { n: m.court })}:</span> ` : ''}${esc(m.a)} <span class="vs">vs</span> ${esc(m.b)}</div>
+                                <div>${r.length > 1 ? `<span class="muted">${t('court', { n: m.court })}:</span> ` : ''}<span class="side">${esc(m.a)}</span> <span class="vs">vs</span> <span class="side">${esc(m.b)}</span></div>
                                 <div class="history-score">${m.score[0]} : ${m.score[1]}</div>
                             </div>`,
                         )
@@ -524,8 +524,9 @@ function renderRows(rows, compact, nameHead) {
     return `<div class="table-wrap"><table class="standings">${head}${body}</table></div>`;
 }
 
+// Пара переносится только целиком: «Дима + Наташа vs» / «Паша + Сережа»
 function matchLine(m) {
-    return `${esc(sideNames(m, 0))} <span class="vs">vs</span> ${esc(sideNames(m, 1))}`;
+    return `<span class="side">${esc(sideNames(m, 0))}</span> <span class="vs">vs</span> <span class="side">${esc(sideNames(m, 1))}</span>`;
 }
 
 function renderGame() {
@@ -674,23 +675,26 @@ function shareText() {
     return lines.join('\n');
 }
 
-async function share() {
-    const text = shareText();
+async function copyResults() {
     try {
-        if (navigator.share) {
-            await navigator.share({ text });
-            return;
-        }
-    } catch (e) {
-        if (e?.name === 'AbortError') return;
-    }
-    try {
-        await navigator.clipboard.writeText(text);
+        await navigator.clipboard.writeText(shareText());
         showToast(t('copied'));
     } catch {
         showToast(t('copyFailed'));
     }
 }
+
+async function sendResults() {
+    try {
+        await navigator.share({ text: shareText() });
+    } catch {
+        // отмена или ошибка — ничего не делаем
+    }
+}
+
+// На Android окно отправки мессенджера открывается внутри установленного приложения,
+// и вернуться можно только «Назад»; на iPhone такого нет
+const isAndroid = /Android/i.test(navigator.userAgent);
 
 function playersPanel() {
     const s = session;
@@ -716,16 +720,8 @@ function playersPanel() {
                <input type="text" name="b" placeholder="${t('nickname')} 2" autocomplete="off" maxlength="24" />
                <button type="submit" class="btn round primary" aria-label="${t('add')}">${icon('user-plus')}</button>
            </form>`;
-    return `<section class="card"><h2>${icon('users')} ${t('playersAndCourts')}</h2>
-        ${
-            S.isWinnerStays(s)
-                ? ''
-                : S.canChangeCourts(s)
-                  ? `<div class="row-between"><h3>${t('courts')}</h3>${stepper('game-courts', s.settings.courts)}</div>`
-                  : `<div class="row-between"><h3>${t('courts')}</h3><span class="stepper-value">${s.settings.courts}</span></div>
-                     <p class="note">${t('courtsLocked')}</p>`
-        }
-        <h3>${isAm ? t('addPlayer') : t('addPair')}</h3>
+    return `<section class="card"><h2>${icon('users')} ${t('players')}</h2>
+                <h3>${isAm ? t('addPlayer') : t('addPair')}</h3>
         ${addForm}
         ${view.playersError ? `<p class="error">${view.playersError}</p>` : ''}
         <ul class="name-list">${list}</ul></section>`;
@@ -737,33 +733,41 @@ function brand() {
     </header>`;
 }
 
-function scoringPanel() {
+function gameParamsPanel() {
     const s = session;
     const target = s.settings.targetSum;
-    if (!S.canChangeScoring(s)) {
-        return `<section class="card stack">
-            <h2>${icon('table-tennis-paddle-ball')} ${t('scoring')}</h2>
-            <p class="muted">${target ? `${t('targetScore')}: ${target}` : t('freeScore')}</p>
-            <p class="note">${t('scoringLocked')}</p>
-        </section>`;
-    }
+    const courts = S.isWinnerStays(s)
+        ? ''
+        : `${
+              S.canChangeCourts(s)
+                  ? `<div class="row-between"><h3>${t('courtsCount')}</h3>${stepper('game-courts', s.settings.courts)}</div>`
+                  : `<div class="row-between"><h3>${t('courtsCount')}</h3><span class="stepper-value">${s.settings.courts}</span></div>
+                     <p class="note">${t('courtsLocked')}</p>`
+          }
+          <hr class="sep" />`;
+    const scoring = S.canChangeScoring(s)
+        ? `${segmented('game-scoring', [['free', t('freeScore')], ['target', t('targetScore')]], target ? 'target' : 'free')}
+           ${
+               target
+                   ? `<div class="row-between"><h3>${t('targetSumLabel')}</h3>${stepper('game-step-target', target)}</div>
+                      <div class="chips">${[11, 19, 25, 31]
+                          .map((v) => `<button type="button" class="chip ${v === target ? 'on' : ''}" data-action="game-target" data-value="${v}">${v}</button>`)
+                          .join('')}</div>`
+                   : ''
+           }
+           <p class="note">${t('scoringUntilFirst')}</p>`
+        : `<p class="muted">${target ? `${t('targetScore')}: ${target}` : t('freeScore')}</p>
+           <p class="note">${t('scoringLocked')}</p>`;
     return `<section class="card stack">
-        <h2>${icon('table-tennis-paddle-ball')} ${t('scoring')}</h2>
-        ${segmented('game-scoring', [['free', t('freeScore')], ['target', t('targetScore')]], target ? 'target' : 'free')}
-        ${
-            target
-                ? `<div class="row-between"><h3>${t('targetSumLabel')}</h3>${stepper('game-step-target', target)}</div>
-                   <div class="chips">${[11, 19, 25, 31]
-                       .map((v) => `<button type="button" class="chip ${v === target ? 'on' : ''}" data-action="game-target" data-value="${v}">${v}</button>`)
-                       .join('')}</div>`
-                : ''
-        }
-        <p class="note">${t('scoringUntilFirst')}</p>
+        <h2>${icon('table-tennis-paddle-ball')} ${t('gameParams')}</h2>
+        ${courts}
+        <h3>${t('scoring')}</h3>
+        ${scoring}
     </section>`;
 }
 
 function renderSettings() {
-    return `${brand()}${switches()}${scoringPanel()}${playersPanel()}`;
+    return `${brand()}${switches()}${gameParamsPanel()}${playersPanel()}`;
 }
 
 // ---------- диалоги ----------
@@ -793,6 +797,17 @@ function renderDialog() {
                           .join('')}</div>`
                     : `<p class="muted">${t('nobodyResting')}</p>`
             }`;
+    }
+
+    if (d.type === 'share') {
+        const canSend = Boolean(navigator.share);
+        return `${close}<h2>${icon('share-nodes')} ${t('share')}</h2>
+            <pre class="share-preview">${esc(shareText())}</pre>
+            <div class="list-buttons">
+                ${btn('share-copy', t('copyResults'), { iconName: 'copy', cls: 'wide' })}
+                ${canSend ? btn('share-send', t('sendResults'), { iconName: 'share-nodes', cls: 'primary wide' }) : ''}
+            </div>
+            ${canSend && isAndroid ? `<p class="note">${t('androidBackNote')}</p>` : ''}`;
     }
 
     if (d.type === 'restart') {
@@ -1107,7 +1122,17 @@ const actions = {
         persist();
     },
     share() {
-        share();
+        openDialog({ type: 'share' });
+        return false;
+    },
+    'share-copy'() {
+        closeDialog();
+        copyResults();
+        return false;
+    },
+    'share-send'() {
+        closeDialog();
+        sendResults();
         return false;
     },
     'ask-restart'() {
