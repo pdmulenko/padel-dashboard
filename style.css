@@ -1380,3 +1380,13 @@ ul.plain.bare {
     list-style: none;
     padding-left: 0;
 }
+
+/* Тема выбрана вручную: «only» запрещает браузерам (Samsung Internet и др.) перекрашивать
+   страницу своим «тёмным режимом для сайтов» */
+:root[data-theme='light'] {
+    color-scheme: only light;
+}
+
+:root[data-theme='dark'] {
+    color-scheme: only dark;
+}

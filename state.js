@@ -493,7 +493,14 @@ export function setTargetSum(s, targetSum) {
     if (canChangeScoring(s)) s.settings.targetSum = targetSum;
 }
 
+// Число кортов меняется между турами: пока в текущем туре есть сохранённый счёт, менять нельзя
+// (иначе новое число молча применилось бы только со следующего тура)
+export function canChangeCourts(s) {
+    return !currentHasScores(s);
+}
+
 export function setCourts(s, n) {
+    if (!canChangeCourts(s)) return;
     s.settings.courts = n;
     if (!currentHasScores(s)) s.current = null;
     invalidateForecast(s);
