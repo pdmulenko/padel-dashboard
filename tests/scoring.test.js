@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { scoreFromTarget, computeTable, americanoKeys, pairsKeys, isValidScore, podium, podiumTiebreaks } from '../scoring.js';
+import { scoreFromTarget, computeTable, americanoKeys, pairsKeys, isValidScore, podium, podiumTiebreaks, targetGridShape } from '../scoring.js';
 
 const players = ['a', 'b', 'c', 'd'].map((id) => ({ id, name: id.toUpperCase(), active: true }));
 const match = (score) => ({ sides: [['a', 'b'], ['c', 'd']], pairs: ['t1', 't2'], score });
@@ -74,4 +74,19 @@ test('при равной разнице мячей выше тот, у кого
     assert.deepEqual(podiumTiebreaks([row('A', 2, 0, 10, 2), row('B', 1, 1, 6, 6), row('C', 0, 2, 2, 10)]), { wins: false, goals: false });
     // равны разница мячей и побед — решают забитые
     assert.deepEqual(podiumTiebreaks([row('A', 1, 1, 12, 10), row('B', 1, 1, 8, 6), row('C', 0, 2, 2, 10)]), { wins: false, goals: true });
+});
+
+test('сетка очков: «Сохранить» занимает от 2 клеток до целого ряда, без пустых дыр', () => {
+    for (let target = 2; target <= 99; target++) {
+        const n = target + 1;
+        const g = targetGridShape(n);
+        assert.ok(g, `сумма ${target}`);
+        assert.equal(g.cols * g.rows, n + g.free, `сумма ${target}`);
+        assert.ok(g.free >= 2 && g.free <= g.cols, `сумма ${target}: свободно ${g.free} при ${g.cols} столбцах`);
+        assert.ok(g.cols >= 3 && g.cols <= 8, `сумма ${target}: ${g.cols} столбцов`);
+    }
+    // примеры из обсуждения
+    assert.deepEqual(targetGridShape(24), { cols: 6, rows: 5, free: 6 }); // сумма 23: «Сохранить» на весь ряд
+    assert.deepEqual(targetGridShape(26), { cols: 6, rows: 5, free: 4 }); // сумма 25
+    assert.deepEqual(targetGridShape(32), { cols: 6, rows: 6, free: 4 }); // сумма 31
 });

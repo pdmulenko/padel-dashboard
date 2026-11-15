@@ -1423,3 +1423,20 @@ h2 .muted {
     height: 1.05rem;
     flex: none;
 }
+
+/* «Сохранить» в последнем ряду сетки чисел: та же высота, что у клеток */
+.grid-save {
+    display: flex;
+}
+
+.grid-save .btn {
+    width: 100%;
+    min-height: 0;
+    height: 100%;
+    padding: 0 0.5rem;
+    font-size: 1.05rem;
+}
+
+.target-grid {
+    margin-bottom: 0;
+}

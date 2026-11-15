@@ -51,6 +51,21 @@ export const winDiff = (r) => r.w - r.l;
 
 const sameRank = (a, b) => a.diff === b.diff && winDiff(a) === winDiff(b) && a.gf === b.gf;
 
+// Сетка выбора очков (числа 0…S, то есть n = S + 1 кнопок) плюс «Сохранить» в последнем ряду.
+// Столбцы подбираются так, чтобы сетка была близка к квадрату, а «Сохранить» заняла
+// от 2 до cols клеток в конце последнего ряда (никогда одну клетку и никогда пустую дырку)
+export function targetGridShape(n) {
+    const options = [];
+    for (let cols = 3; cols <= 8; cols++) {
+        const rows = Math.ceil((n + 2) / cols);
+        const free = cols * rows - n;
+        if (free >= 2 && free <= cols) options.push({ cols, rows, free });
+    }
+    // ближе к квадрату; при равенстве — ниже (меньше рядов)
+    options.sort((a, b) => Math.abs(a.cols - a.rows) - Math.abs(b.cols - b.rows) || a.rows - b.rows);
+    return options[0];
+}
+
 // Первые три места: группы строк, делящих место по всем критериям
 export function podium(rows) {
     const groups = [];

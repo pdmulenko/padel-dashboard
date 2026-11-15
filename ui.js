@@ -1,7 +1,7 @@
 // Рендер и события. Весь экран перерисовывается из состояния; события — через data-action.
 
 import { t, getLang, setLang } from './i18n.js';
-import { scoreFromTarget, isValidScore, podium, podiumTiebreaks } from './scoring.js';
+import { scoreFromTarget, isValidScore, podium, podiumTiebreaks, targetGridShape } from './scoring.js';
 import * as S from './state.js';
 import { morphInner } from './morph.js';
 
@@ -15,7 +15,7 @@ const storage = (() => {
     }
 })();
 // Номер версии приложения (история — в CHANGELOG.md)
-export const APP_VERSION = '1.5';
+export const APP_VERSION = '2.0';
 
 const LANG_KEY = 'pd-lang';
 const THEME_KEY = 'pd-theme';
@@ -226,7 +226,7 @@ function setupParams() {
                 : ''
         }
     </section>
-    ${btn('setup-tab', t('nextPlayers'), { iconName: 'calendar-check', cls: 'primary wide big', attrs: 'data-tab="players"' })}`;
+    ${btn('setup-tab', t('nextPlayers'), { iconName: 'clipboard-list', cls: 'primary wide big', attrs: 'data-tab="players"' })}`;
 }
 
 function setupPlayers() {
@@ -452,7 +452,8 @@ function scoreHead(match, center, key = null, side = 0) {
     </div>`;
 }
 
-function scoreInput(key, target, match) {
+// saveHtml — кнопка «Сохранить»: при сумме очков встаёт в последний ряд сетки чисел, иначе — под вводом
+function scoreInput(key, target, match, saveHtml) {
     const draft = view.drafts[key];
     if (target) {
         const x = draft ? draft[0] : null;
@@ -460,11 +461,11 @@ function scoreInput(key, target, match) {
         const cells = Array.from({ length: target + 1 }, (_, v) => v)
             .map((v) => `<button type="button" class="cell ${v === x ? 'on' : ''}" data-action="pick-target" data-key="${key}" data-value="${v}">${v}</button>`)
             .join('');
-        const cols = Math.ceil(Math.sqrt(target + 1));
+        const { cols, free } = targetGridShape(target + 1);
         const shown = x === null ? '– : –' : side === 0 ? `${x} : ${target - x}` : `${target - x} : ${x}`;
         // чьи очки вводим — выбирается тапом по рамке пары
         return `${scoreHead(match, `<div class="score-display">${shown}</div>`, key, side)}
-                <div class="target-grid" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr))">${cells}</div>`;
+                <div class="target-grid" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr))">${cells}<div class="grid-save" style="grid-column: span ${free}">${saveHtml}</div></div>`;
     }
     const [x, y] = draft ?? [0, 0];
     const sideInput = (i, v) => `
@@ -474,7 +475,8 @@ function scoreInput(key, target, match) {
             <button type="button" class="btn round big" data-action="score-step" data-key="${key}" data-side="${i}" data-delta="1" aria-label="+">${icon('plus')}</button>
         </div>`;
     return `${scoreHead(match, '<span class="vs">vs</span>')}
-            <div class="score-free">${sideInput(0, x)}<span class="score-colon">:</span>${sideInput(1, y)}</div>`;
+            <div class="score-free">${sideInput(0, x)}<span class="score-colon">:</span>${sideInput(1, y)}</div>
+            ${saveHtml}`;
 }
 
 function draftScore(key) {
@@ -571,8 +573,7 @@ function scoreCard() {
     const body = m.score
         ? `${scoreHead(m, `<div class="score-display">${m.score[0]} : ${m.score[1]}</div>`)}
            ${btn('reopen-score', t('undo'), { iconName: 'rotate-left', cls: 'ghost wide', attrs: `data-match="${mi}"` })}`
-        : `${scoreInput(key, session.settings.targetSum, m)}
-           ${btn('save-score', t('save'), { iconName: 'check', cls: 'primary wide big', attrs: `data-key="${key}" data-match="${mi}"`, disabled: !draftScore(key) })}`;
+        : scoreInput(key, session.settings.targetSum, m, btn('save-score', t('save'), { iconName: 'check', cls: 'primary wide big', attrs: `data-key="${key}" data-match="${mi}"`, disabled: !draftScore(key) }));
     return `<section class="card score-card">
         <h2>${icon('pen-to-square')} ${t('scoring')}</h2>
         ${tabs}
@@ -868,8 +869,7 @@ function renderDialog() {
         const m = round.matches[d.match];
         return `${close}<h2>${t('editScore')}</h2>
             <p class="dialog-teams">${matchLine(m)}</p>
-            ${scoreInput('edit', session.settings.targetSum, m)}
-            ${btn('save-edit', t('save'), { iconName: 'check', cls: 'primary wide big', attrs: 'data-key="edit"', disabled: !draftScore('edit') })}`;
+            ${scoreInput('edit', session.settings.targetSum, m, btn('save-edit', t('save'), { iconName: 'check', cls: 'primary wide big', attrs: 'data-key="edit"', disabled: !draftScore('edit') }))}`;
     }
 
     if (d.type === 'sub') {
@@ -961,7 +961,7 @@ function renderHeader() {
            </nav>`
         : `<nav class="tabs">
                ${setupTab('params', 'sliders', t('tabParams'))}
-               ${setupTab('players', 'calendar-check', t('tabPlayers'))}
+               ${setupTab('players', 'clipboard-list', t('tabPlayers'))}
                ${setupTab('history', 'clock-rotate-left', t('tabHistory'))}
            </nav>`;
     return `${session ? '' : brand()}${tabs}`;
