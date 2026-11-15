@@ -193,6 +193,7 @@ function setupParams() {
         <h2>${icon('sliders')} ${t('gameFormat')}</h2>
         <h3>${t('mode')}</h3>
         ${segmented('set-mode', [['americano', t('americano')], ['pairs', t('fixedPairs')]], st.mode)}
+        <p class="note">${t('modeHint')}</p>
         ${
             isPairs
                 ? `${SEP}
