@@ -599,77 +599,7 @@ ol.plain li {
     margin: 0.25rem 0;
 }
 
-/* ---------- переключатели темы и языка (как на pdmulenko.github.io) ---------- */
-
-.switches {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1rem;
-    border-radius: var(--radius);
-    background: var(--brand);
-    color: #ffffff;
-    font-weight: 500;
-}
-
-.switch-container {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-}
-
-.switch {
-    position: relative;
-    display: inline-block;
-    width: 3.125rem;
-    height: 1.625rem;
-    flex: none;
-}
-
-.switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.slider {
-    position: absolute;
-    inset: 0;
-    cursor: pointer;
-    background-color: #cccccc;
-    transition: 0.4s;
-    border-radius: 1.25rem;
-}
-
-.slider::before {
-    position: absolute;
-    content: '';
-    height: 1.125rem;
-    width: 1.125rem;
-    left: 0.25rem;
-    bottom: 0.25rem;
-    background-color: #ffffff;
-    transition: 0.4s;
-    border-radius: 50%;
-}
-
-.switch input:checked + .slider {
-    background-color: var(--lime);
-}
-
-.switch input:checked + .slider::before {
-    background-color: var(--brand);
-}
-
-.switch input:checked + .slider::before {
-    transform: translateX(1.5rem);
-}
-
-.switch input:focus-visible + .slider {
-    outline: 0.15rem solid #ffffff;
-    outline-offset: 0.1rem;
-}
+/* ---------- флаги в переключателе языка ---------- */
 
 .flag {
     width: 1.75rem;
@@ -1477,4 +1407,19 @@ h2 .muted {
 
 .stack > .sep + h3 {
     margin-top: 0;
+}
+
+/* переключатели с иконкой или флагом рядом с подписью (тема, язык) */
+.segmented .seg {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4em;
+    text-align: center;
+}
+
+.seg .flag {
+    width: 1.4rem;
+    height: 1.05rem;
+    flex: none;
 }

@@ -127,19 +127,14 @@ function applyTheme(theme) {
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isDark() ? '#0c1511' : '#1f6f4a');
 }
 
+// Панель «Оформление»: тема и язык — такими же переключателями, как остальные в приложении
 function switches() {
-    return `<div class="switches">
-        <div class="switch-container">
-            ${icon('sun')}<span>${t('themeLight')}</span>
-            <label class="switch"><input type="checkbox" data-toggle="theme" ${isDark() ? 'checked' : ''} aria-label="${t('themeDark')}" /><span class="slider"></span></label>
-            <span>${t('themeDark')}</span>${icon('moon')}
-        </div>
-        <div class="switch-container">
-            <img class="flag" src="icons/flag-ru.svg" alt="" /><span>Русский</span>
-            <label class="switch"><input type="checkbox" data-toggle="lang" ${getLang() === 'en' ? 'checked' : ''} aria-label="English" /><span class="slider"></span></label>
-            <span>English</span><img class="flag" src="icons/flag-gb.svg" alt="" />
-        </div>
-    </div>`;
+    const flag = (code) => `<img class="flag" src="icons/flag-${code}.svg" alt="" />`;
+    return `<section class="card stack">
+        <h2>${icon('palette')} ${t('appearance')}</h2>
+        ${segmented('set-theme', [['light', `${icon('sun')} ${t('themeLight')}`], ['dark', `${icon('moon')} ${t('themeDark')}`]], isDark() ? 'dark' : 'light')}
+        ${segmented('set-lang', [['ru', `${flag('ru')} Русский`], ['en', `${flag('gb')} English`]], getLang())}
+    </section>`;
 }
 
 // ---------- настройка ----------
@@ -547,7 +542,7 @@ function playingCard(resting, multi, ws, title, note) {
             ? `<div class="resting-row"><h3>${icon('mug-hot')} ${t('resting')}</h3><p>${resting.map((id) => esc(unitName(id))).join(', ')}</p></div>`
             : '';
     return `<section class="card playing ${multi ? 'multi' : ''}">
-        <h2>${icon('person-running')} ${title}</h2>
+        <h2>${icon('table-tennis-paddle-ball')} ${title}</h2>
         ${note}
         ${blocks}
         ${restingRow}
@@ -579,7 +574,7 @@ function scoreCard() {
         : `${scoreInput(key, session.settings.targetSum, m)}
            ${btn('save-score', t('save'), { iconName: 'check', cls: 'primary wide big', attrs: `data-key="${key}" data-match="${mi}"`, disabled: !draftScore(key) })}`;
     return `<section class="card score-card">
-        <h2>${icon('table-tennis-paddle-ball')} ${t('scoring')}</h2>
+        <h2>${icon('pen-to-square')} ${t('scoring')}</h2>
         ${tabs}
         ${body}
     </section>`;
@@ -850,7 +845,7 @@ function gameParamsPanel() {
         : `<p class="muted">${target ? `${t('targetScore')}: ${target}` : t('freeScore')}</p>
            <p class="note">${t('scoringLocked')}</p>`;
     return `<section class="card stack">
-        <h2>${icon('table-tennis-paddle-ball')} ${t('gameParams')}</h2>
+        <h2>${icon('sliders')} ${t('gameParams')}</h2>
         ${courts}
         <h3>${t('scoring')}</h3>
         ${scoring}
@@ -1012,6 +1007,19 @@ const actions = {
     go(el) {
         view.screen = el.dataset.screen;
         window.scrollTo(0, 0);
+    },
+
+    'set-theme'(el) {
+        applyTheme(el.dataset.value);
+        try {
+            storage.setItem(THEME_KEY, el.dataset.value);
+        } catch {}
+    },
+    'set-lang'(el) {
+        setLang(el.dataset.value);
+        try {
+            storage.setItem(LANG_KEY, el.dataset.value);
+        } catch {}
     },
 
     // настройка
@@ -1427,8 +1435,8 @@ document.addEventListener('input', (e) => {
 
 // системная тема могла смениться (например, авто-тёмная на закате): сверить переключатель и цвет строки состояния
 function syncSystemTheme() {
-    const toggle = document.querySelector('[data-toggle="theme"]');
-    if (toggle && toggle.checked === isDark()) return;
+    const shown = document.querySelector('[data-action="set-theme"].on')?.dataset.value;
+    if (shown && (shown === 'dark') === isDark()) return;
     applyTheme(document.documentElement.dataset.theme ?? null);
     render();
 }
@@ -1437,24 +1445,6 @@ document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') syncSystemTheme();
 });
 
-document.addEventListener('change', (e) => {
-    const kind = e.target.dataset.toggle;
-    if (kind === 'theme') {
-        const theme = e.target.checked ? 'dark' : 'light';
-        applyTheme(theme);
-        try {
-            storage.setItem(THEME_KEY, theme);
-        } catch {}
-        render();
-    } else if (kind === 'lang') {
-        const lang = e.target.checked ? 'en' : 'ru';
-        setLang(lang);
-        try {
-            storage.setItem(LANG_KEY, lang);
-        } catch {}
-        render();
-    }
-});
 
 dlg.addEventListener('close', () => {
     if (view.dialog && view.dialog.type !== 'corrupt') {

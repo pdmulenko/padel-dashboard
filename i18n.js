@@ -2,6 +2,7 @@
 
 const dict = {
     ru: {
+        appearance: 'Оформление',
         gameParams: 'Параметры игры',
         courtsCount: 'Число кортов',
         copyResults: 'Скопировать',
@@ -165,6 +166,7 @@ const dict = {
         startOver: 'Начать заново',
     },
     en: {
+        appearance: 'Appearance',
         gameParams: 'Game settings',
         courtsCount: 'Number of courts',
         copyResults: 'Copy',
