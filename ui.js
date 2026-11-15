@@ -15,7 +15,7 @@ const storage = (() => {
     }
 })();
 // Номер версии приложения (история — в CHANGELOG.md)
-export const APP_VERSION = '2.0.1';
+export const APP_VERSION = '2.1';
 
 const LANG_KEY = 'pd-lang';
 const THEME_KEY = 'pd-theme';
